@@ -92,11 +92,11 @@ pub async fn start(
 }
 
 /// NBD disk representation.
-pub struct IscsiDisk {
+pub struct IscsiTarget {
     iscsi_ptr: *mut spdk_nbd_disk,
 }
 
-impl IscsiDisk {
+impl IscsiTarget {
     /// Allocate nbd device for the bdev and start it.
     /// When the function returns the nbd disk is ready for IO.
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
@@ -129,13 +129,13 @@ impl IscsiDisk {
     }
 }
 
-impl fmt::Debug for IscsiDisk {
+impl fmt::Debug for IscsiTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}@{:?}", self.get_path(), self.iscsi_ptr)
     }
 }
 
-impl fmt::Display for IscsiDisk {
+impl fmt::Display for IscsiTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.get_path())
     }

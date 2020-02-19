@@ -8,8 +8,9 @@ use spdk_sys::create_crypto_disk;
 use crate::{
     bdev::nexus::{
         nexus_bdev::{
-            CreateCryptoBdev, DestroyCryptoBdev, Error, Nexus, ShareNexus,
+            CreateCryptoBdev, DestroyCryptoBdev, Error, Nexus, ShareNexus, ShareIscsiNexus, 
         },
+        nexus_iscsi::IscsiTarget,
         nexus_nbd::NbdDisk,
     },
     core::Bdev,
@@ -68,19 +69,25 @@ impl Nexus {
 
         if true {
             // nbd
-            let disk = NbdDisk::create(&name).await.context(ShareNexus {
-                name: self.name.clone(),
-            })?;
-            let device_path = disk.get_path();
+            let nbd_disk =
+                NbdDisk::create(&name).await.context(ShareNexus {
+                    name: self.name.clone(),
+                })?;
+            let device_path = nbd_disk.get_path();
             self.share_handle = Some(name);
-            self.nbd_disk = Some(disk);
+            self.nbd_disk = Some(nbd_disk);
             Ok(device_path)
         } else {
-            let device_path = "".to_string();
+            let iscsi_target =
+                IscsiTarget::create(&name).await.context(ShareIscsiNexus {
+                    name: self.name.clone(),
+                })?;
+            let device_path = iscsi_target.get_path();
+            self.share_handle = Some(name);
+            self.iscsi_target = Some(iscsi_target);
+            // iscsi
             Ok(device_path)
         }
-
-        
     }
 
     /// Undo share operation on nexus. To the chain of bdevs are all claimed
