@@ -15,18 +15,10 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
-    spdk_bdev,
-    spdk_bdev_desc,
-    spdk_bdev_io,
-    spdk_bdev_io_get_buf,
-    spdk_bdev_readv_blocks,
-    spdk_bdev_register,
-    spdk_bdev_unmap_blocks,
-    spdk_bdev_unregister,
-    spdk_bdev_writev_blocks,
-    spdk_io_channel,
-    spdk_io_device_register,
-    spdk_io_device_unregister,
+    spdk_bdev, spdk_bdev_desc, spdk_bdev_io, spdk_bdev_io_get_buf,
+    spdk_bdev_readv_blocks, spdk_bdev_register, spdk_bdev_unmap_blocks,
+    spdk_bdev_unregister, spdk_bdev_writev_blocks, spdk_io_channel,
+    spdk_io_device_register, spdk_io_device_unregister,
 };
 
 use crate::{
@@ -38,7 +30,7 @@ use crate::{
             nexus_child::{ChildError, ChildState, NexusChild},
             nexus_io::{io_status, Bio},
             nexus_label::LabelError,
-            nexus_nbd::{Disk, NbdError},
+            nexus_nbd::{NbdDisk, NbdError},
         },
     },
     core::{Bdev, DmaBuf, DmaError},
@@ -124,39 +116,17 @@ pub enum Error {
 impl RpcErrorCode for Error {
     fn rpc_error_code(&self) -> Code {
         match self {
-            Error::NexusNotFound {
-                ..
-            } => Code::NotFound,
-            Error::InvalidUuid {
-                ..
-            } => Code::InvalidParams,
-            Error::InvalidKey {
-                ..
-            } => Code::InvalidParams,
-            Error::AlreadyShared {
-                ..
-            } => Code::InvalidParams,
-            Error::NotShared {
-                ..
-            } => Code::InvalidParams,
-            Error::CreateChild {
-                ..
-            } => Code::InvalidParams,
-            Error::MixedBlockSizes {
-                ..
-            } => Code::InvalidParams,
-            Error::ChildGeometry {
-                ..
-            } => Code::InvalidParams,
-            Error::OpenChild {
-                ..
-            } => Code::InvalidParams,
-            Error::DestroyLastChild {
-                ..
-            } => Code::InvalidParams,
-            Error::ChildNotFound {
-                ..
-            } => Code::NotFound,
+            Error::NexusNotFound { .. } => Code::NotFound,
+            Error::InvalidUuid { .. } => Code::InvalidParams,
+            Error::InvalidKey { .. } => Code::InvalidParams,
+            Error::AlreadyShared { .. } => Code::InvalidParams,
+            Error::NotShared { .. } => Code::InvalidParams,
+            Error::CreateChild { .. } => Code::InvalidParams,
+            Error::MixedBlockSizes { .. } => Code::InvalidParams,
+            Error::ChildGeometry { .. } => Code::InvalidParams,
+            Error::OpenChild { .. } => Code::InvalidParams,
+            Error::DestroyLastChild { .. } => Code::InvalidParams,
+            Error::ChildNotFound { .. } => Code::NotFound,
             _ => Code::InternalError,
         }
     }
@@ -186,7 +156,7 @@ pub struct Nexus {
     /// the offset in num blocks where the data partition starts
     pub data_ent_offset: u64,
     /// nbd device which the nexus is exposed through
-    pub(crate) nbd_disk: Option<Disk>,
+    pub(crate) nbd_disk: Option<NbdDisk>,
     /// the handle to be used when sharing the nexus, this allows for the bdev
     /// to be shared with vbdevs on top
     pub(crate) share_handle: Option<String>,

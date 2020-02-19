@@ -18,8 +18,8 @@ use nix::{convert_ioctl_res, errno::Errno, libc};
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
-    spdk_iscsi_disk, spdk_nbd_disk, spdk_nbd_disk_find_by_nbd_path,
-    spdk_nbd_get_path, spdk_nbd_start, spdk_nbd_stop,
+    spdk_nbd_disk, spdk_nbd_disk_find_by_nbd_path, spdk_nbd_get_path,
+    spdk_nbd_start, spdk_nbd_stop,
 };
 use sysfs::parse_value;
 
@@ -42,13 +42,12 @@ pub enum IscsiError {
 /// Callback for spdk_nbd_start().
 extern "C" fn start_cb(
     sender_ptr: *mut c_void,
-    iscsi_disk: *mut spdk_iscsi_disk,
+    iscsi_disk: *mut spdk_nbd_disk,
     errno: i32,
 ) {
     let sender = unsafe {
         Box::from_raw(
-            sender_ptr
-                as *mut oneshot::Sender<ErrnoResult<*mut spdk_iscsi_disk>>,
+            sender_ptr as *mut oneshot::Sender<ErrnoResult<*mut spdk_nbd_disk>>,
         )
     };
     sender
@@ -64,7 +63,7 @@ pub async fn start(
     let c_bdev_name = CString::new(bdev_name).unwrap();
     let c_device_path = CString::new(device_path).unwrap();
     let (sender, receiver) =
-        oneshot::channel::<ErrnoResult<*mut spdk_iscsi_disk>>();
+        oneshot::channel::<ErrnoResult<*mut spdk_nbd_disk>>();
 
     info!(
         "(start) Started iSCSI disk {} for {}",
@@ -122,7 +121,7 @@ impl IscsiDisk {
     /// Get nbd device path (/dev/nbd...) for the nbd disk.
     pub fn get_path(&self) -> String {
         unsafe {
-            CStr::from_ptr(spdk_iscsi_get_path(self.iscsi_ptr))
+            CStr::from_ptr(spdk_nbd_get_path(self.iscsi_ptr))
                 .to_str()
                 .unwrap()
                 .to_string()

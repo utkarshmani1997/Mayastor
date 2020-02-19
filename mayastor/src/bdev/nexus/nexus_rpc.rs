@@ -2,17 +2,9 @@ use futures::{future, FutureExt};
 use uuid::Uuid;
 
 use rpc::mayastor::{
-    AddChildNexusRequest,
-    Child,
-    ChildNexusRequest,
-    CreateNexusRequest,
-    DestroyNexusRequest,
-    ListNexusReply,
-    Nexus as RpcNexus,
-    PublishNexusReply,
-    PublishNexusRequest,
-    RemoveChildNexusRequest,
-    UnpublishNexusRequest,
+    AddChildNexusRequest, Child, ChildNexusRequest, CreateNexusRequest,
+    DestroyNexusRequest, ListNexusReply, Nexus as RpcNexus, PublishNexusReply,
+    PublishNexusRequest, RemoveChildNexusRequest, UnpublishNexusRequest,
 };
 
 use crate::{
@@ -55,7 +47,7 @@ fn nexus_lookup(uuid: &str) -> Result<&mut Nexus, Error> {
 /// jsonrpc api, we return the whole name without modifications as it is.
 fn name_to_uuid(name: &str) -> &str {
     if name.starts_with("nexus-") {
-        &name[6 ..]
+        &name[6..]
     } else {
         name
     }
@@ -131,9 +123,10 @@ pub(crate) fn register_rpc_methods() {
                 if args.key == "" { None } else { Some(args.key) };
 
             let nexus = nexus_lookup(&args.uuid)?;
-            nexus.share(key).await.map(|device_path| PublishNexusReply {
-                device_path,
-            })
+            nexus
+                .share(key)
+                .await
+                .map(|device_path| PublishNexusReply { device_path })
         };
         fut.boxed_local()
     });
