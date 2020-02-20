@@ -113,19 +113,21 @@ pub fn init(address: &str, pg_no: c_int) -> Result<()> {
             return Err(Error::RegisterPortalGroup {});
         }
     }
-    debug!("Created default iscsi portal group");
+    info!("Created default iscsi portal group");
 
-    unsafe {
-        if spdk_iscsi_init_grp_create_from_initiator_list(
-            0,
-            1,
-            &mut (initiator_host.as_ptr() as *mut c_char) as *mut _,
-            1,
-            &mut (initiator_netmask.as_ptr() as *mut c_char) as *mut _,
-        ) != 0
-        {
-            spdk_iscsi_portal_grp_release(pg);
-            return Err(Error::CreateInitiatorGroup {});
+    if pg_no == 0 {
+        unsafe {
+            if spdk_iscsi_init_grp_create_from_initiator_list(
+                0,
+                1,
+                &mut (initiator_host.as_ptr() as *mut c_char) as *mut _,
+                1,
+                &mut (initiator_netmask.as_ptr() as *mut c_char) as *mut _,
+            ) != 0
+            {
+                spdk_iscsi_portal_grp_release(pg);
+                return Err(Error::CreateInitiatorGroup {});
+            }
         }
     }
     ADDRESS.with(move |addr| {

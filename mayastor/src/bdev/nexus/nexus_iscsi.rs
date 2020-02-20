@@ -67,6 +67,7 @@ pub async fn start(
     bdev_name: &str,
     device_path: &str,
 ) -> Result<*mut spdk_nbd_disk, IscsiError> {
+    let c_bdev_name_alt = CString::new("foo").unwrap();
     let c_bdev_name = CString::new(bdev_name).unwrap();
     let c_device_path = CString::new(device_path).unwrap();
     let (sender, receiver) =
@@ -87,20 +88,23 @@ pub async fn start(
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
-    let mut group_idx: c_int = 0;
+    let mut portal_group_idx: c_int = 1; // or 1
+    let mut init_group_idx: c_int = 0; // or 1
+    
     let mut lun_id: c_int = 0;
     /*let idx = ISCSI_IDX.with(move |iscsi_idx| {
         let idx = *iscsi_idx.borrow();
         *iscsi_idx.borrow_mut() = idx + 1;
         idx
     });*/
+    let idx = 0;
     let tgt = unsafe {
         spdk_iscsi_tgt_node_construct(
-            1, //idx,
-            c_iqn.as_ptr(),
-            ptr::null(),
-            &mut group_idx as *mut _,
-            &mut group_idx as *mut _,
+            idx,  // target_index
+            c_iqn.as_ptr(), // name
+            ptr::null(),     // alias
+            &mut portal_group_idx as *mut _,  // pg_tag_list
+            &mut init_group_idx as *mut _,  // ig_tag_list
             1, // portal and initiator group list length
             &mut c_bdev_name.as_ptr(),
             &mut lun_id as *mut _,
@@ -116,7 +120,7 @@ pub async fn start(
     };
     if tgt.is_null() {
         info!("Failed to create iscsi target {}", iqn);
-        //Err(IscsiError::Unavailable {});
+    //Err(IscsiError::Unavailable {});
     } else {
         info!("Created iscsi target {}", iqn);
         //Ok(());
