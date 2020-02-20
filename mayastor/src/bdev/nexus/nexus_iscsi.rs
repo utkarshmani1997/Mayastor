@@ -6,8 +6,10 @@ use std::{
     fmt,
     fs::OpenOptions,
     io,
+    os::raw::c_int,
     os::unix::io::AsRawFd,
     path::Path,
+    ptr,
     sync::{atomic::AtomicBool, Arc},
     thread,
     time::Duration,
@@ -18,14 +20,16 @@ use nix::{convert_ioctl_res, errno::Errno, libc};
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
-    spdk_nbd_disk, spdk_nbd_disk_find_by_nbd_path, spdk_nbd_get_path,
-    spdk_nbd_start, spdk_nbd_stop,
+    spdk_iscsi_tgt_node_construct, spdk_nbd_disk,
+    spdk_nbd_disk_find_by_nbd_path, spdk_nbd_get_path, spdk_nbd_start,
+    spdk_nbd_stop,
 };
 use sysfs::parse_value;
 
 use crate::{
     core::Reactors,
     ffihelper::{cb_arg, errno_result_from_i32, ErrnoResult},
+    target,
 };
 
 // include/uapi/linux/fs.h
@@ -54,7 +58,10 @@ extern "C" fn start_cb(
         .send(errno_result_from_i32(iscsi_disk, errno))
         .expect("NBD start receiver is gone");
 }
-
+/// Generate iqn based on provided uuid
+fn target_name(uuid: &str) -> String {
+    format!("iqn.2019-05.io.openebs:{}", uuid)
+}
 /// Start nbd disk using provided device name.
 pub async fn start(
     bdev_name: &str,
@@ -70,6 +77,52 @@ pub async fn start(
         device_path, bdev_name
     );
 
+    let address = "127.0.0.1";
+    if let Err(msg) = target::iscsi::init(&address, 1) {
+        error!("Failed to initialize Mayastor iSCSI target: {}", msg);
+        //return Err(EnvError::InitTarget {
+        //    target: "iscsi".into(),
+        //});
+    }
+
+    let iqn = target_name(bdev_name);
+    let c_iqn = CString::new(iqn.clone()).unwrap();
+    let mut group_idx: c_int = 0;
+    let mut lun_id: c_int = 0;
+    /*let idx = ISCSI_IDX.with(move |iscsi_idx| {
+        let idx = *iscsi_idx.borrow();
+        *iscsi_idx.borrow_mut() = idx + 1;
+        idx
+    });*/
+    let tgt = unsafe {
+        spdk_iscsi_tgt_node_construct(
+            1, //idx,
+            c_iqn.as_ptr(),
+            ptr::null(),
+            &mut group_idx as *mut _,
+            &mut group_idx as *mut _,
+            1, // portal and initiator group list length
+            &mut c_bdev_name.as_ptr(),
+            &mut lun_id as *mut _,
+            1,     // length of lun id list
+            128,   // max queue depth
+            false, // disable chap
+            false, // require chap
+            false, // mutual chap
+            0,     // chap group
+            false, // header digest
+            false, // data digest
+        )
+    };
+    if tgt.is_null() {
+        info!("Failed to create iscsi target {}", iqn);
+        //Err(IscsiError::Unavailable {});
+    } else {
+        info!("Created iscsi target {}", iqn);
+        //Ok(());
+    }
+
+    /*
     unsafe {
         spdk_nbd_start(
             c_bdev_name.as_ptr(),
@@ -78,6 +131,7 @@ pub async fn start(
             cb_arg(sender),
         );
     }
+    */
     info!(
         "(start) done Started nbd disk {} for {}",
         device_path, bdev_name
@@ -102,6 +156,9 @@ impl IscsiTarget {
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
         // find a NBD device which is available
         let device_path = "";
+
+        // call create_iscsi_disk here?
+
         let iscsi_ptr = start(bdev_name, &device_path).await?;
 
         // we wait for the dev to come up online because

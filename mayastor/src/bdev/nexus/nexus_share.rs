@@ -8,7 +8,8 @@ use spdk_sys::create_crypto_disk;
 use crate::{
     bdev::nexus::{
         nexus_bdev::{
-            CreateCryptoBdev, DestroyCryptoBdev, Error, Nexus, ShareNexus, ShareIscsiNexus, 
+            CreateCryptoBdev, DestroyCryptoBdev, Error, Nexus, ShareIscsiNexus,
+            ShareNexus,
         },
         nexus_iscsi::IscsiTarget,
         nexus_nbd::NbdDisk,
@@ -67,7 +68,7 @@ impl Nexus {
         // The share handle is the actual bdev that is shared through the
         // various protocols.
 
-        if true {
+        if false {
             // nbd
             let nbd_disk =
                 NbdDisk::create(&name).await.context(ShareNexus {
