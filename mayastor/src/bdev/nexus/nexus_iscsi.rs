@@ -76,16 +76,15 @@ pub async fn start(
         "(start) Started iSCSI disk {} for {}",
         device_path, bdev_name
     );
-/*** 
+
     let address = "127.0.0.1";
-    if let Err(msg) = target::iscsi::init(&address, 0) {
+    if let Err(msg) = target::iscsi::init(&address, 1) {
         error!("Failed to initialize Mayastor iSCSI target: {}", msg);
         //return Err(EnvError::InitTarget {
         //    target: "iscsi".into(),
         //});
     }
 
-***/
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
     let mut group_idx: c_int = 0;
@@ -117,7 +116,7 @@ pub async fn start(
     };
     if tgt.is_null() {
         info!("Failed to create iscsi target {}", iqn);
-    //Err(IscsiError::Unavailable {});
+        //Err(IscsiError::Unavailable {});
     } else {
         info!("Created iscsi target {}", iqn);
         //Ok(());

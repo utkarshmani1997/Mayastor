@@ -68,7 +68,7 @@ impl Nexus {
         // The share handle is the actual bdev that is shared through the
         // various protocols.
 
-        if true {
+        if false {
             // nbd
             let nbd_disk =
                 NbdDisk::create(&name).await.context(ShareNexus {

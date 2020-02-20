@@ -83,14 +83,14 @@ fn target_name(uuid: &str) -> String {
 
 /// Create iscsi portal and initiator group which will be used later when
 /// creating iscsi targets.
-pub fn init(address: &str) -> Result<()> {
+pub fn init(address: &str, pg_no: c_int) -> Result<()> {
     let portal_host = CString::new(address.to_owned()).unwrap();
-    let port_no: u16 = ISCSI_PORT;
+    let port_no: u16 = pg_no as u16 + ISCSI_PORT;
     let portal_port = CString::new(port_no.to_string()).unwrap();
     let initiator_host = CString::new("ANY").unwrap();
     let initiator_netmask = CString::new("ANY").unwrap();
 
-    let pg = unsafe { spdk_iscsi_portal_grp_create(0) };
+    let pg = unsafe { spdk_iscsi_portal_grp_create(pg_no) };
     if pg.is_null() {
         return Err(Error::CreatePortalGroup {});
     }
@@ -164,7 +164,7 @@ pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
     });
     let tgt = unsafe {
         spdk_iscsi_tgt_node_construct(
-            idx, // target_index
+            idx,
             c_iqn.as_ptr(),
             ptr::null(),
             &mut group_idx as *mut _,
