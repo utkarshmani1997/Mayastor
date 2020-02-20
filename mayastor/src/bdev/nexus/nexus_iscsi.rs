@@ -90,21 +90,21 @@ pub async fn start(
     let c_iqn = CString::new(iqn.clone()).unwrap();
     let mut portal_group_idx: c_int = 1; // or 1
     let mut init_group_idx: c_int = 0; // or 1
-    
+
     let mut lun_id: c_int = 0;
     /*let idx = ISCSI_IDX.with(move |iscsi_idx| {
         let idx = *iscsi_idx.borrow();
         *iscsi_idx.borrow_mut() = idx + 1;
         idx
     });*/
-    let idx = 0;
+    let idx = 1; // does this also work with 0?
     let tgt = unsafe {
         spdk_iscsi_tgt_node_construct(
-            idx,  // target_index
-            c_iqn.as_ptr(), // name
-            ptr::null(),     // alias
-            &mut portal_group_idx as *mut _,  // pg_tag_list
-            &mut init_group_idx as *mut _,  // ig_tag_list
+            idx,                             // target_index
+            c_iqn.as_ptr(),                  // name
+            ptr::null(),                     // alias
+            &mut portal_group_idx as *mut _, // pg_tag_list
+            &mut init_group_idx as *mut _,   // ig_tag_list
             1, // portal and initiator group list length
             &mut c_bdev_name.as_ptr(),
             &mut lun_id as *mut _,

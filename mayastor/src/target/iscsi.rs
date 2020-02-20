@@ -164,6 +164,7 @@ pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
         *iscsi_idx.borrow_mut() = idx + 1;
         idx
     });
+    info!("Creating backend iscsi target {}", iqn);
     let tgt = unsafe {
         spdk_iscsi_tgt_node_construct(
             idx,
