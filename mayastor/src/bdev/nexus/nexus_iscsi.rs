@@ -79,7 +79,7 @@ pub async fn start(
     );
 
     let address = "127.0.0.1";
-    if let Err(msg) = target::iscsi::init(&address, 1) {
+    if let Err(msg) = target::iscsi::init(&address, 0) {
         error!("Failed to initialize Mayastor iSCSI target: {}", msg);
         //return Err(EnvError::InitTarget {
         //    target: "iscsi".into(),
@@ -88,7 +88,7 @@ pub async fn start(
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
-    let mut portal_group_idx: c_int = 1; // or 1
+    let mut portal_group_idx: c_int = 0; // or 1
     let mut init_group_idx: c_int = 0; // or 1
 
     let mut lun_id: c_int = 0;

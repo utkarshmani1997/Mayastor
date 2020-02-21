@@ -157,6 +157,7 @@ pub fn fini() {
 pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
     let iqn = target_name(uuid);
     let c_iqn = CString::new(iqn.clone()).unwrap();
+    let mut portal_group_idx: c_int = 1;
     let mut group_idx: c_int = 0;
     let mut lun_id: c_int = 0;
     let idx = ISCSI_IDX.with(move |iscsi_idx| {
@@ -170,7 +171,7 @@ pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
             idx,
             c_iqn.as_ptr(),
             ptr::null(),
-            &mut group_idx as *mut _,
+            &mut portal_group_idx as *mut _,
             &mut group_idx as *mut _,
             1, // portal and initiator group list length
             &mut spdk_bdev_get_name(bdev.as_ptr()),

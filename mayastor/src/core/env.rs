@@ -494,7 +494,7 @@ impl MayastorEnvironment {
             Err(_) => "127.0.0.1".to_owned(),
         };
 
-        if let Err(msg) = target::iscsi::init(&address, 0) {
+        if let Err(msg) = target::iscsi::init(&address, 1) {
             error!("Failed to initialize Mayastor iSCSI target: {}", msg);
             return Err(EnvError::InitTarget {
                 target: "iscsi".into(),
