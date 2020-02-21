@@ -97,7 +97,7 @@ pub async fn start(
         *iscsi_idx.borrow_mut() = idx + 1;
         idx
     });*/
-    let idx = 1; // does this also work with 0?
+    let idx = 1; // does this also work with 0? yes but will probably fail if iscsi is used on the backend
     let tgt = unsafe {
         spdk_iscsi_tgt_node_construct(
             idx,                             // target_index
@@ -137,8 +137,8 @@ pub async fn start(
     }
     */
     info!(
-        "(start) done Started nbd disk {} for {}",
-        device_path, bdev_name
+        "(start) done creating iscsi target {} for {}",
+        iqn, bdev_name
     );
 
     receiver

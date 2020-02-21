@@ -13,25 +13,13 @@ use nix::errno::Errno;
 use snafu::{ResultExt, Snafu};
 
 use rpc::mayastor::{
-    CreateReplicaReply,
-    CreateReplicaRequest,
-    DestroyReplicaRequest,
-    ListReplicasReply,
-    Replica as ReplicaJson,
-    ReplicaStats,
-    ShareProtocol,
-    ShareReplicaReply,
-    ShareReplicaRequest,
-    StatReplicasReply,
-    Stats,
+    CreateReplicaReply, CreateReplicaRequest, DestroyReplicaRequest,
+    ListReplicasReply, Replica as ReplicaJson, ReplicaStats, ShareProtocol,
+    ShareReplicaReply, ShareReplicaRequest, StatReplicasReply, Stats,
 };
 use spdk_sys::{
-    spdk_lvol,
-    vbdev_lvol_create,
-    vbdev_lvol_destroy,
-    vbdev_lvol_get_from_bdev,
-    LVOL_CLEAR_WITH_UNMAP,
-    LVOL_CLEAR_WITH_WRITE_ZEROES,
+    spdk_lvol, vbdev_lvol_create, vbdev_lvol_destroy, vbdev_lvol_get_from_bdev,
+    LVOL_CLEAR_WITH_UNMAP, LVOL_CLEAR_WITH_WRITE_ZEROES,
     SPDK_BDEV_IO_TYPE_UNMAP,
 };
 
@@ -57,15 +45,9 @@ pub enum RpcError {
 impl RpcErrorCode for RpcError {
     fn rpc_error_code(&self) -> Code {
         match self {
-            RpcError::CreateReplica {
-                source, ..
-            } => source.rpc_error_code(),
-            RpcError::DestroyReplica {
-                source, ..
-            } => source.rpc_error_code(),
-            RpcError::ShareReplica {
-                source, ..
-            } => source.rpc_error_code(),
+            RpcError::CreateReplica { source, .. } => source.rpc_error_code(),
+            RpcError::DestroyReplica { source, .. } => source.rpc_error_code(),
+            RpcError::ShareReplica { source, .. } => source.rpc_error_code(),
         }
     }
 }
@@ -102,36 +84,16 @@ pub enum Error {
 impl RpcErrorCode for Error {
     fn rpc_error_code(&self) -> Code {
         match self {
-            Error::PoolNotFound {
-                ..
-            } => Code::NotFound,
-            Error::ReplicaNotFound {
-                ..
-            } => Code::NotFound,
-            Error::ReplicaExists {
-                ..
-            } => Code::AlreadyExists,
-            Error::InvalidParams {
-                ..
-            } => Code::InvalidParams,
-            Error::CreateLvol {
-                ..
-            } => Code::InvalidParams,
-            Error::InvalidProtocol {
-                ..
-            } => Code::InvalidParams,
-            Error::ShareNvmf {
-                source, ..
-            } => source.rpc_error_code(),
-            Error::ShareIscsi {
-                source, ..
-            } => source.rpc_error_code(),
-            Error::UnshareNvmf {
-                source, ..
-            } => source.rpc_error_code(),
-            Error::UnshareIscsi {
-                source, ..
-            } => source.rpc_error_code(),
+            Error::PoolNotFound { .. } => Code::NotFound,
+            Error::ReplicaNotFound { .. } => Code::NotFound,
+            Error::ReplicaExists { .. } => Code::AlreadyExists,
+            Error::InvalidParams { .. } => Code::InvalidParams,
+            Error::CreateLvol { .. } => Code::InvalidParams,
+            Error::InvalidProtocol { .. } => Code::InvalidParams,
+            Error::ShareNvmf { source, .. } => source.rpc_error_code(),
+            Error::ShareIscsi { source, .. } => source.rpc_error_code(),
+            Error::UnshareNvmf { source, .. } => source.rpc_error_code(),
+            Error::UnshareIscsi { source, .. } => source.rpc_error_code(),
             _ => Code::InternalError,
         }
     }
@@ -221,9 +183,7 @@ impl Replica {
             .context(CreateLvol {})?;
 
         info!("Created replica {} on pool {}", uuid, pool.get_name());
-        Ok(Self {
-            lvol_ptr,
-        })
+        Ok(Self { lvol_ptr })
     }
 
     /// Lookup replica by uuid (=name).
@@ -234,9 +194,7 @@ impl Replica {
                 if lvol.is_null() {
                     None
                 } else {
-                    Some(Self {
-                        lvol_ptr: lvol,
-                    })
+                    Some(Self { lvol_ptr: lvol })
                 }
             }
             None => None,
@@ -383,9 +341,7 @@ pub struct ReplicaIter {
 
 impl ReplicaIter {
     pub fn new() -> ReplicaIter {
-        ReplicaIter {
-            bdev: None,
-        }
+        ReplicaIter { bdev: None }
     }
 }
 
@@ -413,9 +369,7 @@ impl Iterator for ReplicaIter {
                     let parts: Vec<&str> = alias.split('/').collect();
 
                     if parts.len() == 2 && bdev.name() == parts[1] {
-                        let replica = Replica {
-                            lvol_ptr: lvol,
-                        };
+                        let replica = Replica { lvol_ptr: lvol };
 
                         if replica.get_pool_name() == parts[0] {
                             // we found a replica
@@ -483,16 +437,12 @@ pub fn register_replica_methods() {
         |args: DestroyReplicaRequest| {
             let fut = async move {
                 match Replica::lookup(&args.uuid) {
-                    Some(replica) => {
-                        replica.destroy().await.context(DestroyReplica {
-                            uuid: args.uuid,
-                        })
-                    }
-                    None => {
-                        Err(Error::ReplicaNotFound {}).context(DestroyReplica {
-                            uuid: args.uuid,
-                        })
-                    }
+                    Some(replica) => replica
+                        .destroy()
+                        .await
+                        .context(DestroyReplica { uuid: args.uuid }),
+                    None => Err(Error::ReplicaNotFound {})
+                        .context(DestroyReplica { uuid: args.uuid }),
                 }
             };
             fut.boxed_local()
@@ -558,9 +508,7 @@ pub fn register_replica_methods() {
                     }
                 }
             }
-            Ok(StatReplicasReply {
-                replicas: stats,
-            })
+            Ok(StatReplicasReply { replicas: stats })
         };
         fut.boxed_local()
     });
