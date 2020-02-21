@@ -29,6 +29,8 @@ use sysfs::parse_value;
 use crate::{
     core::Reactors,
     ffihelper::{cb_arg, errno_result_from_i32, ErrnoResult},
+    target::iscsi::construct_iscsi_target,
+    target::iscsi::ISCSI_PORTAL_GROUP_FE,
     target,
 };
 
@@ -58,87 +60,27 @@ extern "C" fn start_cb(
         .send(errno_result_from_i32(iscsi_disk, errno))
         .expect("NBD start receiver is gone");
 }
-/// Generate iqn based on provided uuid
-fn target_name(uuid: &str) -> String {
-    format!("iqn.2019-05.io.openebs:{}", uuid)
-}
+
 /// Start nbd disk using provided device name.
 pub async fn start(
     bdev_name: &str,
     device_path: &str,
 ) -> Result<*mut spdk_nbd_disk, IscsiError> {
-    let c_bdev_name_alt = CString::new("foo").unwrap();
     let c_bdev_name = CString::new(bdev_name).unwrap();
     let c_device_path = CString::new(device_path).unwrap();
     let (sender, receiver) =
         oneshot::channel::<ErrnoResult<*mut spdk_nbd_disk>>();
 
     info!(
-        "(start) Started iSCSI disk {} for {}",
-        device_path, bdev_name
+        "(start) Started iSCSI disk for {}",
+        bdev_name
     );
 
-    let address = "127.0.0.1";
-    if let Err(msg) = target::iscsi::init(&address, 0) {
-        error!("Failed to initialize Mayastor iSCSI target: {}", msg);
-        //return Err(EnvError::InitTarget {
-        //    target: "iscsi".into(),
-        //});
-    }
+    construct_iscsi_target(bdev_name, ISCSI_PORTAL_GROUP_FE, 0); // fixme error handling
 
-    let iqn = target_name(bdev_name);
-    let c_iqn = CString::new(iqn.clone()).unwrap();
-    let mut portal_group_idx: c_int = 0; // or 1
-    let mut init_group_idx: c_int = 0; // or 1
-
-    let mut lun_id: c_int = 0;
-    /*let idx = ISCSI_IDX.with(move |iscsi_idx| {
-        let idx = *iscsi_idx.borrow();
-        *iscsi_idx.borrow_mut() = idx + 1;
-        idx
-    });*/
-    let idx = 1; // does this also work with 0? yes but will probably fail if iscsi is used on the backend
-    let tgt = unsafe {
-        spdk_iscsi_tgt_node_construct(
-            idx,                             // target_index
-            c_iqn.as_ptr(),                  // name
-            ptr::null(),                     // alias
-            &mut portal_group_idx as *mut _, // pg_tag_list
-            &mut init_group_idx as *mut _,   // ig_tag_list
-            1, // portal and initiator group list length
-            &mut c_bdev_name.as_ptr(),
-            &mut lun_id as *mut _,
-            1,     // length of lun id list
-            128,   // max queue depth
-            false, // disable chap
-            false, // require chap
-            false, // mutual chap
-            0,     // chap group
-            false, // header digest
-            false, // data digest
-        )
-    };
-    if tgt.is_null() {
-        info!("Failed to create iscsi target {}", iqn);
-    //Err(IscsiError::Unavailable {});
-    } else {
-        info!("Created iscsi target {}", iqn);
-        //Ok(());
-    }
-
-    /*
-    unsafe {
-        spdk_nbd_start(
-            c_bdev_name.as_ptr(),
-            c_device_path.as_ptr(),
-            Some(start_cb),
-            cb_arg(sender),
-        );
-    }
-    */
     info!(
-        "(start) done creating iscsi target {} for {}",
-        iqn, bdev_name
+        "(start) done creating iscsi target for {}",
+        bdev_name
     );
 
     receiver
@@ -149,9 +91,9 @@ pub async fn start(
         })
 }
 
-/// NBD disk representation.
+/// Iscsi target representation.
 pub struct IscsiTarget {
-    iscsi_ptr: *mut spdk_nbd_disk,
+    iscsi_ptr: *mut spdk_nbd_disk, // fixme
 }
 
 impl IscsiTarget {
