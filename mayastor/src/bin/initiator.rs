@@ -21,7 +21,7 @@ use mayastor::{
         CoreError,
         DmaError,
         MayastorEnvironment,
-        Reactors,
+        Reactor,
     },
     jsonrpc::print_error_chain,
     logger,
@@ -182,7 +182,7 @@ fn main() {
                 };
                 mayastor_env_stop(rc)
             };
-            Reactors::current().unwrap().send_future(fut);
+            Reactor::block_on(fut);
         })
         .unwrap();
     info!("{}", rc);
