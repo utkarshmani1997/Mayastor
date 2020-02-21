@@ -118,7 +118,7 @@ impl IscsiTarget {
 
     /// Stop and release nbd device.
     pub fn destroy(self) {
-        unsafe { spdk_nbd_stop(self.iscsi_ptr) };
+        unsafe { spdk_nbd_stop(self.iscsi_ptr) }; // fixme
     }
 
     /// Get nbd device path (/dev/nbd...) for the nbd disk.
