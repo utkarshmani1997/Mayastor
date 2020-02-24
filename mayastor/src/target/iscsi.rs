@@ -17,7 +17,8 @@ use nix::errno::Errno;
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
-    spdk_bdev_get_name, spdk_iscsi_find_tgt_node,
+    //spdk_bdev_get_name, 
+    spdk_iscsi_find_tgt_node,
     spdk_iscsi_init_grp_create_from_initiator_list,
     spdk_iscsi_init_grp_destroy, spdk_iscsi_init_grp_unregister,
     spdk_iscsi_portal_create, spdk_iscsi_portal_grp_add_portal,
@@ -210,9 +211,9 @@ pub fn fini() {
 
 /// Export given bdev over iscsi. That involves creating iscsi target and
 /// adding the bdev as LUN to it.
-pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
+pub fn share(uuid: &str, _bdev: &Bdev) -> Result<()> {
 
-    construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, 0);
+    construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP);
 
     Ok(())
 }
