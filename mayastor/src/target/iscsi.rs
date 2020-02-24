@@ -172,9 +172,9 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) ->
             ptr::null(),                     // alias
             &mut portal_group_idx as *mut _, // pg_tag_list
             &mut init_group_idx as *mut _,   // ig_tag_list
-            1, // portal and initiator group list length
-            &mut c_bdev_name.as_ptr(),
-            &mut lun_id as *mut _,
+            1,                               // portal and initiator group list length
+            &mut c_bdev_name.as_ptr(),       // lun name
+            &mut lun_id as *mut _,           // lun id
             1,     // length of lun id list
             128,   // max queue depth
             false, // disable chap
