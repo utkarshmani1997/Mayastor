@@ -20,7 +20,9 @@ use nix::{convert_ioctl_res, errno::Errno, libc};
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
-    spdk_iscsi_tgt_node_construct, spdk_nbd_disk,
+    spdk_iscsi_tgt_node_construct,
+    spdk_iscsi_tgt_node,
+    spdk_nbd_disk,
     spdk_nbd_disk_find_by_nbd_path, spdk_nbd_get_path, spdk_nbd_start,
     spdk_nbd_stop,
 };
@@ -41,19 +43,19 @@ const IOCTL_BLKGETSIZE: u32 = ior!(0x12, 114, std::mem::size_of::<u64>());
 pub enum IscsiError {
     #[snafu(display("No free NBD devices available (is nbd kmod loaded?)"))]
     Unavailable {},
-    #[snafu(display("Failed to start NBD on {}", dev))]
+    #[snafu(display("Failed to start iscsi target on {}", dev))]
     StartIscsi { source: Errno, dev: String },
 }
 
 /// Callback for spdk_nbd_start().
 extern "C" fn start_cb(
     sender_ptr: *mut c_void,
-    iscsi_disk: *mut spdk_nbd_disk,
+    iscsi_disk: *mut spdk_iscsi_tgt_node,
     errno: i32,
 ) {
     let sender = unsafe {
         Box::from_raw(
-            sender_ptr as *mut oneshot::Sender<ErrnoResult<*mut spdk_nbd_disk>>,
+            sender_ptr as *mut oneshot::Sender<ErrnoResult<*mut spdk_iscsi_tgt_node>>,
         )
     };
     sender
@@ -65,11 +67,11 @@ extern "C" fn start_cb(
 pub async fn start(
     bdev_name: &str,
     device_path: &str,
-) -> Result<*mut spdk_nbd_disk, IscsiError> {
+) -> Result<*mut spdk_iscsi_tgt_node, IscsiError> {
     let c_bdev_name = CString::new(bdev_name).unwrap();
     let c_device_path = CString::new(device_path).unwrap();
     let (sender, receiver) =
-        oneshot::channel::<ErrnoResult<*mut spdk_nbd_disk>>();
+        oneshot::channel::<ErrnoResult<*mut spdk_iscsi_tgt_node>>();
 
     info!(
         "(start) Started iSCSI disk for {}",
@@ -93,12 +95,12 @@ pub async fn start(
 
 /// Iscsi target representation.
 pub struct IscsiTarget {
-    iscsi_ptr: *mut spdk_nbd_disk, // fixme
+    iscsi_ptr: *mut spdk_iscsi_tgt_node, // fixme
 }
 
 impl IscsiTarget {
-    /// Allocate nbd device for the bdev and start it.
-    /// When the function returns the nbd disk is ready for IO.
+    /// Allocate iscsi device for the bdev and start it.
+    /// When the function returns the iscsi target is ready for IO.
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
         // find a NBD device which is available
         let device_path = "";
@@ -118,17 +120,18 @@ impl IscsiTarget {
 
     /// Stop and release nbd device.
     pub fn destroy(self) {
-        unsafe { spdk_nbd_stop(self.iscsi_ptr) }; // fixme
+        //unsafe { spdk_nbd_stop(self.iscsi_ptr) }; // fixme
     }
 
     /// Get nbd device path (/dev/nbd...) for the nbd disk.
     pub fn get_path(&self) -> String {
-        unsafe {
-            CStr::from_ptr(spdk_nbd_get_path(self.iscsi_ptr))
-                .to_str()
-                .unwrap()
-                .to_string()
-        }
+        //unsafe {
+        //    CStr::from_ptr(spdk_nbd_get_path(self.iscsi_ptr))
+        //        .to_str()
+        //        .unwrap()
+        //        .to_string()
+        //}
+        return "".to_string(); // fixme
     }
 }
 

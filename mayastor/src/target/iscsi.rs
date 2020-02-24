@@ -24,6 +24,7 @@ use spdk_sys::{
     spdk_iscsi_portal_grp_create, spdk_iscsi_portal_grp_open,
     spdk_iscsi_portal_grp_register, spdk_iscsi_portal_grp_release,
     spdk_iscsi_portal_grp_unregister, spdk_iscsi_shutdown_tgt_node_by_name,
+    spdk_iscsi_tgt_node,
     spdk_iscsi_tgt_node_construct,
 };
 
@@ -149,7 +150,7 @@ pub fn init(address: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) {
+pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) -> Result<*mut spdk_iscsi_tgt_node ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
@@ -186,10 +187,10 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) {
     };
     if tgt.is_null() {
         info!("Failed to create iscsi target {}", iqn);
-    //Err(IscsiError::Unavailable {});
+        Err(Error::CreateTarget {})
     } else {
         info!("Created iscsi target {}", iqn);
-        //Ok(());
+        Ok(tgt)
     }
 }
 
