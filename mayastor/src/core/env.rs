@@ -28,6 +28,7 @@ use spdk_sys::{
 
 use crate::{
     core::{
+        reactor,
         reactor::{Reactor, Reactors},
         Cores,
     },
@@ -213,7 +214,7 @@ impl Default for MayastorEnvironment {
 
 /// The actual routine which does the mayastor shutdown.
 /// Must be called on the same thread which did the init.
-async fn _mayastor_shutdown_cb(arg: *mut c_void) {
+async fn do_shutdown(arg: *mut c_void) {
     extern "C" fn reactors_stop(_arg: *mut c_void) {
         Reactors::iter().for_each(|r| r.shutdown());
     }
@@ -251,11 +252,23 @@ async fn _mayastor_shutdown_cb(arg: *mut c_void) {
 
 /// main shutdown routine for mayastor
 pub fn mayastor_env_stop(rc: i32) {
-    Reactors::get_by_core(Cores::first())
-        .unwrap()
-        .send_future(async move {
-            _mayastor_shutdown_cb(rc as *const i32 as *mut c_void).await;
-        });
+    let r = Reactors::get_by_core(Cores::first()).unwrap();
+
+    match r.get_sate() {
+        reactor::INIT => {
+            Reactor::block_on(async move {
+                do_shutdown(rc as *const i32 as *mut c_void).await;
+            });
+        }
+        reactor::RUNNING | reactor::DEVELOPER_DELAY => {
+            r.send_future(async move {
+                do_shutdown(rc as *const i32 as *mut c_void).await;
+            });
+        }
+        _ => {
+            panic!("invalid state reactor state during shutdown");
+        }
+    }
 }
 
 /// called on SIGINT and SIGTERM
@@ -508,7 +521,7 @@ impl MayastorEnvironment {
             }
         };
 
-        Reactors::current().unwrap().send_future(f);
+        Reactor::block_on(f);
 
         Ok(())
     }
@@ -549,6 +562,10 @@ impl MayastorEnvironment {
 
         // allocate a Reactor per core
         Reactors::init();
+
+        // launch the remote cores if any. note that during init these have to
+        // be running as during setup cross call will take place.
+
         Cores::count()
             .into_iter()
             .for_each(|c| Reactors::launch_remote(c).unwrap());
@@ -556,6 +573,7 @@ impl MayastorEnvironment {
         let rpc = CString::new(self.rpc_addr.as_str()).unwrap();
         let cfg = self.json_config_file.clone();
 
+        // init the subsystems
         Reactor::block_on(async move {
             unsafe {
                 if let Some(ref json) = cfg {
@@ -575,13 +593,16 @@ impl MayastorEnvironment {
                     );
                 }
             }
-            crate::pool::register_pool_methods();
-            crate::replica::register_replica_methods();
         });
+
+        // register our RPC methods
+        crate::pool::register_pool_methods();
+        crate::replica::register_replica_methods();
 
         self
     }
 
+    // finalize our environment
     fn fini() {
         unsafe {
             spdk_trace_cleanup();
@@ -598,7 +619,7 @@ impl MayastorEnvironment {
     {
         self.init();
 
-        let master = Reactors::current().unwrap();
+        let master = Reactors::current();
         master.send_future(async { f() });
         Reactors::launch_master();
 
