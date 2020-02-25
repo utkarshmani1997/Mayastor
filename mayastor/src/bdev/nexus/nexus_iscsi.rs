@@ -30,21 +30,13 @@ pub async fn start(
     bdev_name: &str,
 ) -> Result<String, IscsiError> {
 
-    info!(
-        "(start) Started iSCSI disk for {}",
-        bdev_name
-    );
+    info!("(start) Started iSCSI disk for {}", bdev_name);
 
-    let tgt = construct_iscsi_target(bdev_name,
-                                     ISCSI_PORTAL_GROUP_FE,
-                                     ISCSI_INITIATOR_GROUP);
-
-    match tgt {
-        Ok(_tgt) => {
-            info!(
-                "(start) done creating iscsi target for {}",
-                bdev_name
-            );
+    match construct_iscsi_target(bdev_name,
+        ISCSI_PORTAL_GROUP_FE,
+        ISCSI_INITIATOR_GROUP) {
+        Ok(_) => {
+            info!("(start) done creating iscsi target for {}", bdev_name);
             let target_name = target_name(bdev_name);
             return Ok(target_name)
         },
@@ -62,23 +54,20 @@ impl IscsiTarget {
     /// When the function returns the iscsi target is ready for IO.
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
 
-        // call create_iscsi_disk here?
-
         let iscsi_ptr = start(bdev_name).await?;
 
-        // we wait for the dev to come up online because
-        // otherwise the mount done too early would fail.
-        // If it times out, continue anyway and let the mount fail.
-        //wait_until_ready(&device_path).unwrap();
         info!("Started iscsi target for {}", bdev_name);
 
         Ok(Self { iscsi_ptr })
     }
 
     /// Stop and release nbd device.
-    pub fn destroy(self) {
+    pub async fn destroy(self) {
         info!("Destroying iscsi frontend target");
-        unshare_generic(&self.iscsi_ptr, ISCSI_PORTAL_GROUP_FE);
+        match unshare_generic(&self.iscsi_ptr, ISCSI_PORTAL_GROUP_FE).await {
+            Ok(_) => (),
+            Err(_) =>  error!("Failed to destroy iscsi frontend target"),
+        }
     }
 
     /// Get nbd device path (/dev/nbd...) for the nbd disk.

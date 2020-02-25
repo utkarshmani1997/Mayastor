@@ -79,6 +79,7 @@ impl Nexus {
             self.nbd_disk = Some(nbd_disk);
             Ok(device_path)
         } else {
+            // iscsi
             let iscsi_target =
                 IscsiTarget::create(&name).await.context(ShareIscsiNexus {
                     name: self.name.clone(),
@@ -86,7 +87,6 @@ impl Nexus {
             let device_path = iscsi_target.get_path(); // this should be the iqn
             self.share_handle = Some(name);
             self.iscsi_target = Some(iscsi_target);
-            // iscsi
             Ok(device_path)
         }
     }
@@ -132,7 +132,7 @@ impl Nexus {
         } else {
             match self.iscsi_target.take() {
                 Some(iscsi_target) => {  // fixme take down backend target
-                    iscsi_target.destroy();
+                    iscsi_target.destroy().await;
                     Ok(())    
                 }
                 None => Err(Error::NotShared {

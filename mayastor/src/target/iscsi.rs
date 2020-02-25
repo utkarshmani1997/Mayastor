@@ -131,15 +131,11 @@ pub fn init(address: &str) -> Result<()> {
 
     if let Err(msg) = init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
         error!("Failed to initialize Mayastor iSCSI target: {}", msg);
-        return Err(EnvError::InitTarget {
-            target: "iscsi".into(),
-        });
+        return Err(msg);
     }
     if let Err(msg) = init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
         error!("Failed to initialize Mayastor iSCSI target: {}", msg);
-        return Err(EnvError::InitTarget {
-            target: "iscsi".into(),
-        });
+        return Err(msg);
     }
     
     unsafe {
@@ -187,7 +183,7 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) ->
             &mut portal_group_idx as *mut _, // pg_tag_list
             &mut init_group_idx as *mut _,   // ig_tag_list
             1,                               // portal and initiator group list length
-            &mut c_bdev_name.as_ptr(),       // lun name
+            &mut c_bdev_name.as_ptr(),       // bdev name, how iscsi target gets associated with storage
             &mut lun_id as *mut _,           // lun id
             1,     // length of lun id list
             128,   // max queue depth
@@ -250,7 +246,7 @@ pub async fn unshare_generic(uuid: &str, pg_idx: c_int) -> Result<()> {
     let iqn = target_name_plus_portal(uuid, pg_idx);
     let c_iqn = CString::new(iqn.clone()).unwrap();
 
-    debug!("Destroying iscsi target {}", iqn);
+    info!("Destroying iscsi target {}", iqn);
 
     unsafe {
         spdk_iscsi_shutdown_tgt_node_by_name( // the name is whatever is int target->name, doesn't have to be iqn
