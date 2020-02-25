@@ -28,7 +28,12 @@ use snafu::ResultExt;
 use crate::{
     bdev::nexus::{
         nexus_bdev::{
-            CreateChild, DestroyChild, Error, Nexus, NexusState, OpenChild,
+            CreateChild,
+            DestroyChild,
+            Error,
+            Nexus,
+            NexusState,
+            OpenChild,
             ReadLabel,
         },
         nexus_channel::DREvent,

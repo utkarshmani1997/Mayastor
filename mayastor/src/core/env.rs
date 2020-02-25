@@ -10,7 +10,10 @@ use byte_unit::{Byte, ByteUnit};
 use nix::sys::{
     signal,
     signal::{
-        pthread_sigmask, SigHandler, SigSet, SigmaskHow,
+        pthread_sigmask,
+        SigHandler,
+        SigSet,
+        SigmaskHow,
         Signal::{SIGINT, SIGTERM},
     },
 };
@@ -19,10 +22,21 @@ use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
 use spdk_sys::{
-    maya_log, spdk_app_shutdown_cb, spdk_conf_allocate, spdk_conf_free,
-    spdk_conf_read, spdk_conf_set_as_default, spdk_log_level, spdk_log_open,
-    spdk_log_set_level, spdk_log_set_print_level, spdk_pci_addr,
-    spdk_rpc_set_state, spdk_thread_lib_fini, SPDK_LOG_DEBUG, SPDK_LOG_INFO,
+    maya_log,
+    spdk_app_shutdown_cb,
+    spdk_conf_allocate,
+    spdk_conf_free,
+    spdk_conf_read,
+    spdk_conf_set_as_default,
+    spdk_log_level,
+    spdk_log_open,
+    spdk_log_set_level,
+    spdk_log_set_print_level,
+    spdk_pci_addr,
+    spdk_rpc_set_state,
+    spdk_thread_lib_fini,
+    SPDK_LOG_DEBUG,
+    SPDK_LOG_INFO,
     SPDK_RPC_RUNTIME,
 };
 
@@ -32,7 +46,8 @@ use crate::{
         reactor::{Reactor, Reactors},
         Cores,
     },
-    logger, target,
+    logger,
+    target,
 };
 
 fn parse_mb(src: &str) -> Result<i32, String> {

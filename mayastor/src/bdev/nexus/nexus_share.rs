@@ -8,7 +8,11 @@ use spdk_sys::create_crypto_disk;
 use crate::{
     bdev::nexus::{
         nexus_bdev::{
-            CreateCryptoBdev, DestroyCryptoBdev, Error, Nexus, ShareIscsiNexus,
+            CreateCryptoBdev,
+            DestroyCryptoBdev,
+            Error,
+            Nexus,
+            ShareIscsiNexus,
             ShareNexus,
         },
         nexus_iscsi::IscsiTarget,
@@ -18,13 +22,14 @@ use crate::{
     ffihelper::{cb_arg, done_errno_cb, errno_result_from_i32, ErrnoResult},
 };
 
+const ISCSI_FRONT_END: bool = false;
+//const ISCSI_FRONT_END: bool = true;
+
 /// we are using the multi buffer encryption implementation using CBC as the
 /// algorithm
 const CRYPTO_FLAVOUR: &str = "crypto_aesni_mb";
 
 impl Nexus {
-    /// Publish the nexus to system using nbd device and return the path to
-    /// nbd device.
     pub async fn share(
         &mut self,
         key: Option<String>,
@@ -68,8 +73,11 @@ impl Nexus {
         // The share handle is the actual bdev that is shared through the
         // various protocols.
 
-        if false {
+        if !ISCSI_FRONT_END {
             // nbd
+            // Publish the nexus to system using nbd device and return the path to
+            // nbd device.
+
             let nbd_disk =
                 NbdDisk::create(&name).await.context(ShareNexus {
                     name: self.name.clone(),
@@ -96,7 +104,7 @@ impl Nexus {
     /// bdev. As such, we must first destroy the share and move our way down
     /// from there.
     pub async fn unshare(&mut self) -> Result<(), Error> {
-        if false {
+        if !ISCSI_FRONT_END {
             match self.nbd_disk.take() {
                 Some(disk) => {
                     disk.destroy();
@@ -131,7 +139,8 @@ impl Nexus {
             }
         } else {
             match self.iscsi_target.take() {
-                Some(iscsi_target) => {  // fixme take down backend target
+                Some(iscsi_target) => {
+                    info!("Unsharing iscsi replica");
                     iscsi_target.destroy().await;
                     Ok(())    
                 }

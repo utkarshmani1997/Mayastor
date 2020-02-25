@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+clear
 set -euxo pipefail
 export PATH=$PATH:${HOME}/.cargo/bin
 cargo build --all
