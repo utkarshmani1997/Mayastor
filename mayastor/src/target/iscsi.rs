@@ -129,8 +129,18 @@ pub fn init(address: &str) -> Result<()> {
     let initiator_host = CString::new("ANY").unwrap();
     let initiator_netmask = CString::new("ANY").unwrap();
 
-    init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE); // fixme error handling
-    init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE); // fixme error handling
+    if let Err(msg) = init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
+        error!("Failed to initialize Mayastor iSCSI target: {}", msg);
+        return Err(EnvError::InitTarget {
+            target: "iscsi".into(),
+        });
+    }
+    if let Err(msg) = init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
+        error!("Failed to initialize Mayastor iSCSI target: {}", msg);
+        return Err(EnvError::InitTarget {
+            target: "iscsi".into(),
+        });
+    }
     
     unsafe {
         if spdk_iscsi_init_grp_create_from_initiator_list(
