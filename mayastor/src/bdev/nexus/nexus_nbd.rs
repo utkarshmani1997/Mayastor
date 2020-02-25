@@ -60,13 +60,8 @@ pub(crate) fn wait_until_ready(path: &str) -> Result<(), ()> {
     // start a thread that loops and tries to open us and asks for our size
     thread::spawn(move || {
         let size: u64 = 0;
-<<<<<<< HEAD
-        for _i in 1i32..100 {
-            std::thread::sleep(Duration::from_secs(5));
-=======
         for _i in 1i32 .. 100 {
             std::thread::sleep(Duration::from_millis(1));
->>>>>>> master
             let f = OpenOptions::new().read(true).open(Path::new(&tpath));
             if f.is_err() {
                 continue;
