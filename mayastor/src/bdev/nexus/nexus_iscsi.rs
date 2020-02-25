@@ -1,24 +1,19 @@
 //! Utility functions and wrappers for working with iSCSI devices in SPDK.
 
 use std::{
-    ffi::{c_void, CString},
     fmt,
 };
 
-use futures::channel::oneshot;
 use nix::{errno::Errno};
 use snafu::{Snafu};
 
-use spdk_sys::{
-    //spdk_iscsi_tgt_node_construct,
-    spdk_iscsi_tgt_node,
-};
-
 use crate::{
-    ffihelper::{errno_result_from_i32, ErrnoResult},
     target::iscsi::construct_iscsi_target,
     target::iscsi::ISCSI_PORTAL_GROUP_FE,
     target::iscsi::ISCSI_INITIATOR_GROUP,
+    target::iscsi::target_name,
+    target::iscsi::unshare_generic,
+    
     //target::iscsi::Error,
 };
 
@@ -33,7 +28,7 @@ pub enum IscsiError {
 /// Start nbd disk using provided device name.
 pub async fn start(
     bdev_name: &str,
-) -> Result<*mut spdk_iscsi_tgt_node, IscsiError> {
+) -> Result<String, IscsiError> {
 
     info!(
         "(start) Started iSCSI disk for {}",
@@ -42,22 +37,24 @@ pub async fn start(
 
     let tgt = construct_iscsi_target(bdev_name,
                                      ISCSI_PORTAL_GROUP_FE,
-                                     ISCSI_INITIATOR_GROUP);//.unwrap(); // fixme error handling
-
-    info!(
-        "(start) done creating iscsi target for {}",
-        bdev_name
-    );
+                                     ISCSI_INITIATOR_GROUP);
 
     match tgt {
-        Ok(tgt) => return Ok(tgt),
+        Ok(_tgt) => {
+            info!(
+                "(start) done creating iscsi target for {}",
+                bdev_name
+            );
+            let target_name = target_name(bdev_name);
+            return Ok(target_name)
+        },
         Err(_) => return Err(IscsiError::Unavailable{ }),
     }
 }
 
 /// Iscsi target representation.
 pub struct IscsiTarget {
-    iscsi_ptr: *mut spdk_iscsi_tgt_node, // fixme
+    iscsi_ptr: String, // fixme
 }
 
 impl IscsiTarget {
@@ -73,14 +70,15 @@ impl IscsiTarget {
         // otherwise the mount done too early would fail.
         // If it times out, continue anyway and let the mount fail.
         //wait_until_ready(&device_path).unwrap();
-        info!("Started iscsi disk for {}", bdev_name);
+        info!("Started iscsi target for {}", bdev_name);
 
         Ok(Self { iscsi_ptr })
     }
 
     /// Stop and release nbd device.
     pub fn destroy(self) {
-        //unsafe { spdk_nbd_stop(self.iscsi_ptr) }; // fixme
+        info!("Destroying iscsi frontend target");
+        unshare_generic(&self.iscsi_ptr, ISCSI_PORTAL_GROUP_FE);
     }
 
     /// Get nbd device path (/dev/nbd...) for the nbd disk.

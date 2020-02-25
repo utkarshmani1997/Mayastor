@@ -131,7 +131,8 @@ impl Nexus {
             }
         } else {
             match self.iscsi_target.take() {
-                Some(iscsi_target) => {
+                Some(iscsi_target) => {  // fixme take down backend target
+                    iscsi_target.destroy();
                     Ok(())    
                 }
                 None => Err(Error::NotShared {

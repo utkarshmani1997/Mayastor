@@ -85,10 +85,13 @@ thread_local! {
 }
 
 /// Generate iqn based on provided uuid
-fn target_name(uuid: &str) -> String {
+pub fn target_name(uuid: &str) -> String {
     format!("iqn.2019-05.io.openebs:{}", uuid)
 }
 
+pub fn target_name_plus_portal(uuid: &str, portal_group: c_int) -> String {
+    format!("iqn.2019-05.io.openebs:{}:{}", uuid, portal_group)
+}
 
 pub fn init_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
     let portal_port = CString::new(port_no.to_string()).unwrap();
@@ -153,7 +156,7 @@ pub fn init(address: &str) -> Result<()> {
 
 pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) -> Result<*mut spdk_iscsi_tgt_node ,Error>{
 
-    let iqn = target_name(bdev_name);
+    let iqn = target_name_plus_portal(bdev_name, pg_idx);
     let c_iqn = CString::new(iqn.clone()).unwrap();
     let c_bdev_name = CString::new(bdev_name).unwrap();
     let mut portal_group_idx = pg_idx;
@@ -213,21 +216,34 @@ pub fn fini() {
 /// adding the bdev as LUN to it.
 pub fn share(uuid: &str, _bdev: &Bdev) -> Result<()> {
 
-    construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP);
+    let tgt = construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP);
 
-    Ok(())
+    match tgt {
+        Ok(_tgt) => {
+            info!(
+                "(start) done creating iscsi backend target for {}",
+                uuid
+            );
+            return Ok(())
+        },
+        Err(_) => return Err(Error::CreateTarget{}),
+    }
+}
+
+pub async fn unshare(uuid: &str) -> Result<()> {
+    unshare_generic(uuid, ISCSI_PORTAL_GROUP_BE).await
 }
 
 /// Undo export of a bdev over iscsi done above.
-pub async fn unshare(uuid: &str) -> Result<()> {
+pub async fn unshare_generic(uuid: &str, pg_idx: c_int) -> Result<()> {
     let (sender, receiver) = oneshot::channel::<ErrnoResult<()>>();
-    let iqn = target_name(uuid);
+    let iqn = target_name_plus_portal(uuid, pg_idx);
     let c_iqn = CString::new(iqn.clone()).unwrap();
 
     debug!("Destroying iscsi target {}", iqn);
 
     unsafe {
-        spdk_iscsi_shutdown_tgt_node_by_name(
+        spdk_iscsi_shutdown_tgt_node_by_name( // the name is whatever is int target->name, doesn't have to be iqn
             c_iqn.as_ptr(),
             Some(done_errno_cb),
             cb_arg(sender),
