@@ -25,6 +25,10 @@ use crate::{
 const ISCSI_FRONT_END: bool = false;
 //const ISCSI_FRONT_END: bool = true;
 
+use rpc::mayastor::{
+    ShareProtocol,
+};
+
 /// we are using the multi buffer encryption implementation using CBC as the
 /// algorithm
 const CRYPTO_FLAVOUR: &str = "crypto_aesni_mb";
@@ -32,6 +36,7 @@ const CRYPTO_FLAVOUR: &str = "crypto_aesni_mb";
 impl Nexus {
     pub async fn share(
         &mut self,
+        share_proto: ShareProtocol,
         key: Option<String>,
     ) -> Result<String, Error> {
         if self.nbd_disk.is_some() {
@@ -41,6 +46,14 @@ impl Nexus {
         }
 
         assert_eq!(self.share_handle, None);
+        let _ = match share_proto {
+            ShareProtocol::Nvmf => (),
+            ShareProtocol::Iscsi => (),
+            ShareProtocol::Nbd => (),
+            _ => return Err(Error::InvalidShareProtocol {sp_value: share_proto as i32}),
+        };
+
+        // TODO for now we discard and ignore share_proto
 
         let name = if let Some(key) = key {
             let name = format!("crypto-{}", self.name);

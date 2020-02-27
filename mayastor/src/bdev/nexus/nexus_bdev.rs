@@ -122,6 +122,8 @@ pub enum Error {
     ChildNotFound { child: String, name: String },
     #[snafu(display("Child {} of nexus {} is not closed", child, name))]
     ChildNotClosed { child: String, name: String },
+    #[snafu(display("Invalid ShareProtocol value {}", sp_value))]
+    InvalidShareProtocol { sp_value: i32},
 }
 
 impl RpcErrorCode for Error {
@@ -160,6 +162,9 @@ impl RpcErrorCode for Error {
             Error::ChildNotFound {
                 ..
             } => Code::NotFound,
+            Error::InvalidShareProtocol {
+                ..
+            } => Code::InvalidParams,
             _ => Code::InternalError,
         }
     }
