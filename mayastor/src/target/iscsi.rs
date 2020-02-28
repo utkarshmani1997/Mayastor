@@ -96,13 +96,18 @@ pub fn target_name(uuid: &str) -> String {
 /// Create iscsi portal and initiator group which will be used later when
 /// creating iscsi targets.
 pub fn init(address: &str) -> Result<()> {
+
+    if let Err(e) = init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
+        destroy_iscsi_groups();
+        return Err(e);
+    }
+    if let Err(e) = init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
+        destroy_iscsi_groups();
+        return Err(e);
+    }
+
     let initiator_host = CString::new("ANY").unwrap();
     let initiator_netmask = CString::new("ANY").unwrap();
-
-    info!("Creating portal group for address {}", address);
-
-    init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE)?;
-    init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE)?;
 
     unsafe {
         if spdk_iscsi_init_grp_create_from_initiator_list(
@@ -120,7 +125,7 @@ pub fn init(address: &str) -> Result<()> {
     ADDRESS.with(move |addr| {
         *addr.borrow_mut() = Some(address.to_owned());
     });
-    debug!("Created default iscsi initiator group");
+    debug!("Created default iscsi initiator group and portal groups for address {}", address);
 
     Ok(())
 }
@@ -155,11 +160,8 @@ pub fn share(uuid: &str, _bdev: &Bdev) -> Result<()> {
 
     match tgt {
         Ok(_tgt) => {
-            info!(
-                "(start) done creating iscsi backend target for {}",
-                uuid
-            );
-            return Ok(())
+            info!("Created iscsi backend target for {}", uuid );
+            Ok(())
         },
         Err(_) => return Err(Error::CreateTarget{}),
     }
@@ -224,7 +226,7 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) ->
         )
     };
     if tgt.is_null() {
-        info!("Failed to create iscsi target {}", iqn);
+        error!("Failed to create iscsi target {}", iqn);
         Err(Error::CreateTarget {})
     } else {
         info!("Created iscsi target {}", iqn);

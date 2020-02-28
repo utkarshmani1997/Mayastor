@@ -15,26 +15,8 @@ use crate::{
 
 #[derive(Debug, Snafu)]
 pub enum IscsiError {
-    #[snafu(display("Failed to start iscsi target for bdev uuid {}", dev))]
-    StartIscsi { dev: String },
-}
-
-/// Start iscsi target using given bdev name.
-pub async fn start(
-    bdev_name: &str,
-) -> Result<String, IscsiError> {
-
-    info!("(start) Started iSCSI disk for {}", bdev_name);
-
-    match construct_iscsi_target(bdev_name,
-        ISCSI_PORTAL_GROUP_FE,
-        ISCSI_INITIATOR_GROUP) {
-        Ok(_) => {
-            info!("(start) done creating iscsi target for {}", bdev_name);
-            return Ok(bdev_name.to_string())
-        },
-        Err(_) => return Err(IscsiError::StartIscsi{ dev: bdev_name.to_string() }),
-    }
+    #[snafu(display("Failed to start iscsi target for bdev uuid {}, error {}", dev, err))]
+    StartIscsi { dev: String, err: String },
 }
 
 /// Iscsi target representation.
@@ -47,11 +29,14 @@ impl IscsiTarget {
     /// When the function returns the iscsi target is ready for IO.
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
 
-        let bdev_name = start(bdev_name).await?;
-
-        info!("Started iscsi target for {}", bdev_name);
-
-        Ok(Self { bdev_uuid_str: bdev_name.to_string() })
+        match construct_iscsi_target(bdev_name,
+            ISCSI_PORTAL_GROUP_FE,
+            ISCSI_INITIATOR_GROUP) {
+            Ok(_) => {
+                Ok(Self { bdev_uuid_str: bdev_name.to_string() })
+            },
+            Err(e) => return Err(IscsiError::StartIscsi{ dev: bdev_name.to_string(), err: e.to_string() }),
+        }
     }
 
     /// Stop and release iscsi device.
@@ -59,7 +44,7 @@ impl IscsiTarget {
         info!("Destroying iscsi frontend target");
         match unshare(&self.bdev_uuid_str).await {
             Ok(_) => (),
-            Err(_) =>  error!("Failed to destroy iscsi frontend target"),
+            Err(e) =>  error!("Failed to destroy iscsi frontend target {}", e),
         }
     }
 
