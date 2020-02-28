@@ -113,7 +113,7 @@ pub fn init(address: &str) -> Result<()> {
             &mut (initiator_netmask.as_ptr() as *mut c_char) as *mut _,
         ) != 0
         {
-            fini();
+            destroy_iscsi_groups();
             return Err(Error::CreateInitiatorGroup {});
         }
     }
@@ -126,21 +126,25 @@ pub fn init(address: &str) -> Result<()> {
 }
 
 /// Destroy iscsi default portal and initiator group.
-pub fn fini() {
+fn destroy_iscsi_groups() {
     unsafe {
-        let ig = spdk_iscsi_init_grp_unregister(0);
+        let ig = spdk_iscsi_init_grp_unregister(ISCSI_INITIATOR_GROUP);
         if !ig.is_null() {
             spdk_iscsi_init_grp_destroy(ig);
         }
-        let pg0 = spdk_iscsi_portal_grp_unregister(0);
+        let pg0 = spdk_iscsi_portal_grp_unregister(ISCSI_PORTAL_GROUP_FE);
         if !pg0.is_null() {
             spdk_iscsi_portal_grp_release(pg0);
         }
-        let pg1 = spdk_iscsi_portal_grp_unregister(1);
+        let pg1 = spdk_iscsi_portal_grp_unregister(ISCSI_PORTAL_GROUP_BE);
         if !pg1.is_null() {
             spdk_iscsi_portal_grp_release(pg1);
         }
     }
+}
+
+pub fn fini() {
+    destroy_iscsi_groups();
 }
 
 /// Export given bdev over iscsi. That involves creating iscsi target and
