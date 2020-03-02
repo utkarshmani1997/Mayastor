@@ -29,7 +29,6 @@ use spdk_sys::{
     spdk_iscsi_portal_grp_release,
     spdk_iscsi_portal_grp_unregister,
     spdk_iscsi_shutdown_tgt_node_by_name,
-    spdk_iscsi_tgt_node,
     spdk_iscsi_tgt_node_construct,
 };
 
@@ -70,8 +69,8 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub const ISCSI_PORT_FE: u16 = 3260;
 pub const ISCSI_PORT_BE: u16 = 3262;
 
-pub const ISCSI_PORTAL_GROUP_FE: c_int = 2;
-pub const ISCSI_PORTAL_GROUP_BE: c_int = 0;
+pub const ISCSI_PORTAL_GROUP_FE: c_int = 0;
+pub const ISCSI_PORTAL_GROUP_BE: c_int = 2;
 
 pub const ISCSI_INITIATOR_GROUP: c_int = 0; //only 1 for now
 
@@ -156,11 +155,9 @@ pub fn fini() {
 /// adding the bdev as LUN to it.
 pub fn share(uuid: &str, _bdev: &Bdev) -> Result<()> {
 
-    let tgt = construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP);
-
-    match tgt {
-        Ok(_tgt) => {
-            info!("Created iscsi backend target for {}", uuid );
+    match construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP) {
+        Ok(tgt) => {
+            info!("Created iscsi backend target {} for {}", tgt, uuid );
             Ok(())
         },
         Err(_) => return Err(Error::CreateTarget{}),
@@ -190,7 +187,7 @@ pub async fn unshare(uuid: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) -> Result<*mut spdk_iscsi_tgt_node ,Error>{
+pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
@@ -230,7 +227,7 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) ->
         Err(Error::CreateTarget {})
     } else {
         info!("Created iscsi target {}", iqn);
-        Ok(tgt)
+        Ok(iqn)
     }
 }
 
