@@ -83,8 +83,6 @@ impl Nexus {
 
         self.share_protocol = share_proto;
 
-        // TODO for now we discard and ignore share_proto
-        self.share_protocol = ShareProtocol::Nbd;
         match self.share_protocol {
             ShareProtocol::Nbd => {
                 // Publish the nexus to system using nbd device and return the path to
@@ -135,7 +133,6 @@ impl Nexus {
             ShareProtocol::Iscsi => {
                 match self.iscsi_target.take() {
                     Some(iscsi_target) => {
-                        info!("Unsharing iscsi replica");
                         iscsi_target.destroy().await;
                     },
                     None => return Err(Error::NotShared {
