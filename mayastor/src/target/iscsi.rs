@@ -17,6 +17,7 @@ use nix::errno::Errno;
 use snafu::{ResultExt, Snafu};
 
 use spdk_sys::{
+    spdk_bdev_get_name,
     spdk_iscsi_find_tgt_node,
     spdk_iscsi_init_grp_create_from_initiator_list,
     spdk_iscsi_init_grp_destroy,
@@ -129,7 +130,7 @@ pub fn init(address: &str) -> Result<()> {
     Ok(())
 }
 
-/// Destroy iscsi default portal and initiator group.
+/// Destroy iscsi portal and initiator groups.
 fn destroy_iscsi_groups() {
     unsafe {
         let ig = spdk_iscsi_init_grp_unregister(ISCSI_INITIATOR_GROUP);
@@ -153,9 +154,9 @@ pub fn fini() {
 
 /// Export given bdev over iscsi. That involves creating iscsi target and
 /// adding the bdev as LUN to it.
-pub fn share(uuid: &str, _bdev: &Bdev) -> Result<()> {
+pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
 
-    match construct_iscsi_target(uuid, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP) {
+    match construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP) {
         Ok(tgt) => {
             info!("Created iscsi backend target {} for {}", tgt, uuid );
             Ok(())
@@ -173,7 +174,7 @@ pub async fn unshare(uuid: &str) -> Result<()> {
     info!("Destroying iscsi target {}", iqn);
 
     unsafe {
-        spdk_iscsi_shutdown_tgt_node_by_name( // the name is whatever is int target->name, doesn't have to be iqn
+        spdk_iscsi_shutdown_tgt_node_by_name(
             c_iqn.as_ptr(),
             Some(done_errno_cb),
             cb_arg(sender),
@@ -187,11 +188,10 @@ pub async fn unshare(uuid: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
+pub fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
-    let c_bdev_name = CString::new(bdev_name).unwrap();
     let mut portal_group_idx = pg_idx;
     let mut init_group_idx = ig_idx;
 
@@ -209,8 +209,8 @@ pub fn construct_iscsi_target(bdev_name: &str, pg_idx: c_int, ig_idx: c_int ) ->
             ptr::null(),                     // alias
             &mut portal_group_idx as *mut _, // pg_tag_list
             &mut init_group_idx as *mut _,   // ig_tag_list
-            1,                               // portal and initiator group list length
-            &mut c_bdev_name.as_ptr(),       // bdev name, how iscsi target gets associated with storage
+            1,                                       // portal and initiator group list length
+            &mut spdk_bdev_get_name(bdev.as_ptr()),  // bdev name, how iscsi target gets associated with a bdev
             &mut lun_id as *mut _,           // lun id
             1,     // length of lun id list
             128,   // max queue depth

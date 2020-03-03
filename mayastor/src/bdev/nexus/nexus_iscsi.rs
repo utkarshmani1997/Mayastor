@@ -7,6 +7,7 @@ use std::{
 use snafu::{Snafu};
 
 use crate::{
+    core::Bdev,
     target::iscsi::construct_iscsi_target,
     target::iscsi::ISCSI_PORTAL_GROUP_FE,
     target::iscsi::ISCSI_INITIATOR_GROUP,
@@ -30,7 +31,13 @@ impl IscsiTarget {
     /// When the function returns the iscsi target is ready for IO.
     pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
 
+        let bdev = match Bdev::lookup_by_name(bdev_name) {
+            None => return Err(IscsiError::StartIscsi{ dev: bdev_name.to_string(), err: "bdev not found".to_string() }),
+            Some(bd) => bd,
+        };
+
         match construct_iscsi_target(bdev_name,
+            &bdev,
             ISCSI_PORTAL_GROUP_FE,
             ISCSI_INITIATOR_GROUP) {
             Ok(_) => {
@@ -40,7 +47,6 @@ impl IscsiTarget {
         }
     }
 
-    /// Stop and release iscsi device.
     pub async fn destroy(self) {
         info!("Destroying iscsi frontend target");
         match unshare(&self.bdev_name).await {
@@ -49,7 +55,6 @@ impl IscsiTarget {
         }
     }
 
-    /// Get device path actually means bdev_uuid in this case
     pub fn get_iqn(&self) -> String {
         return target_name(&self.bdev_name);
     }
