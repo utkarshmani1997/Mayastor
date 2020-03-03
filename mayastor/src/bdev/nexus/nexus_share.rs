@@ -30,6 +30,15 @@ use rpc::mayastor::{
 /// algorithm
 const CRYPTO_FLAVOUR: &str = "crypto_aesni_mb";
 
+fn validate_frontend_protocol(share_protocol : ShareProtocol) -> Result<ShareProtocol, Error>  {
+    match share_protocol {
+        ShareProtocol::Nvmf => Ok(ShareProtocol::Nvmf),
+        ShareProtocol::Iscsi => Ok(ShareProtocol::Iscsi),
+        ShareProtocol::Nbd => Ok(ShareProtocol::Nbd),
+        _ => Err(Error::InvalidShareProtocol {sp_value: share_protocol as i32}),
+    }
+}
+
 impl Nexus {
     pub async fn share(
         &mut self,
@@ -43,12 +52,17 @@ impl Nexus {
         }
 
         assert_eq!(self.share_handle, None);
+
+        validate_frontend_protocol(share_proto)?;
+
         match share_proto {
             ShareProtocol::Nvmf => (),
             ShareProtocol::Iscsi => (),
             ShareProtocol::Nbd => (),
             _ => return Err(Error::InvalidShareProtocol {sp_value: share_proto as i32}),
         }
+
+        self.share_protocol = share_proto;
 
         let name = if let Some(key) = key {
             let name = format!("crypto-{}", self.name);
@@ -80,8 +94,6 @@ impl Nexus {
         debug!("creating share handle for {}", name);
         // The share handle is the actual bdev that is shared through the
         // various protocols.
-
-        self.share_protocol = share_proto;
 
         match self.share_protocol {
             ShareProtocol::Nbd => {
@@ -119,6 +131,10 @@ impl Nexus {
     /// bdev. As such, we must first destroy the share and move our way down
     /// from there.
     pub async fn unshare(&mut self) -> Result<(), Error> {
+
+        if validate_frontend_protocol(self.share_protocol).is_err() {
+            return Err(Error::NotShared { name: self.name.clone(),});
+        }
         match self.share_protocol {
             ShareProtocol::Nbd =>  {
                 match self.nbd_disk.take() {
