@@ -156,13 +156,9 @@ pub fn fini() {
 /// adding the bdev as LUN to it.
 pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
 
-    match construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP) {
-        Ok(tgt) => {
-            info!("Created iscsi backend target {} for {}", tgt, uuid );
-            Ok(())
-        },
-        Err(_) => return Err(Error::CreateTarget{}),
-    }
+    let iqn = construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?;
+    info!("Created iscsi backend target {} for {}", iqn, uuid );
+    Ok(())
 }
 
 /// Undo export of a bdev over iscsi done above.

@@ -13,9 +13,9 @@ use crate::{
             Error,
             Nexus,
             ShareIscsiNexus,
-            ShareNexus,
+            ShareNbdNexus,
         },
-        nexus_iscsi::IscsiTarget,
+        nexus_iscsi::NexusIscsiTarget,
         nexus_nbd::NbdDisk,
     },
     core::Bdev,
@@ -52,15 +52,7 @@ impl Nexus {
         }
 
         assert_eq!(self.share_handle, None);
-
         validate_frontend_protocol(share_proto)?;
-
-        match share_proto {
-            ShareProtocol::Nvmf => (),
-            ShareProtocol::Iscsi => (),
-            ShareProtocol::Nbd => (),
-            _ => return Err(Error::InvalidShareProtocol {sp_value: share_proto as i32}),
-        }
 
         self.share_protocol = share_proto;
 
@@ -101,7 +93,7 @@ impl Nexus {
                 // nbd device.
 
                 let nbd_disk =
-                    NbdDisk::create(&name).await.context(ShareNexus {
+                    NbdDisk::create(&name).await.context(ShareNbdNexus {
                         name: self.name.clone(),
                     })?;
                 let device_path = nbd_disk.get_path();
@@ -111,7 +103,7 @@ impl Nexus {
             },
             ShareProtocol::Iscsi => {
                 let iscsi_target =
-                    IscsiTarget::create(&name).await.context(ShareIscsiNexus {
+                    NexusIscsiTarget::create(&name).await.context(ShareIscsiNexus {
                         name: self.name.clone(),
                     })?;            
                 let iqn = iscsi_target.get_iqn();
@@ -120,9 +112,9 @@ impl Nexus {
                 Ok(iqn)
             },
             ShareProtocol::Nvmf => {
-                return Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32})
+                Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32})
             },
-            _ => return Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32}),
+            _ => Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32}),
         }
     }
 
@@ -161,8 +153,7 @@ impl Nexus {
             },
             _ => return Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32}),
         };
-        self.share_protocol = ShareProtocol::None;
-
+        
         let bdev_name = self.share_handle.take().unwrap();
         if let Some(bdev) = Bdev::lookup_by_name(&bdev_name) {
 
@@ -187,6 +178,7 @@ impl Nexus {
         } else {
             warn!("Missing bdev for a shared device");
         }
+        self.share_protocol = ShareProtocol::None;
         Ok(())
     }
 

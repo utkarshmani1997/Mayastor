@@ -16,23 +16,25 @@ use crate::{
 };
 
 #[derive(Debug, Snafu)]
-pub enum IscsiError {
-    #[snafu(display("Failed to start iscsi target for bdev uuid {}, error {}", dev, err))]
-    StartIscsi { dev: String, err: String },
+pub enum NexusIscsiError {
+    #[snafu(display("Failed to create iscsi target for bdev uuid {}, error {}", dev, err))]
+    CreateTargetFailed { dev: String, err: String },
+    #[snafu(display("Bdev not found {}", dev))]
+    BdevNotFound { dev: String },
 }
 
 /// Iscsi target representation.
-pub struct IscsiTarget {
-    bdev_name: String,
+pub struct NexusIscsiTarget {
+    bdev_name: String,  // logically we might store a spdk_iscsi_tgt_node here but ATM the bdev name is all we actually need
 }
 
-impl IscsiTarget {
+impl NexusIscsiTarget {
     /// Allocate iscsi device for the bdev and start it.
     /// When the function returns the iscsi target is ready for IO.
-    pub async fn create(bdev_name: &str) -> Result<Self, IscsiError> {
+    pub async fn create(bdev_name: &str) -> Result<Self, NexusIscsiError> {
 
         let bdev = match Bdev::lookup_by_name(bdev_name) {
-            None => return Err(IscsiError::StartIscsi{ dev: bdev_name.to_string(), err: "bdev not found".to_string() }),
+            None => return Err(NexusIscsiError::BdevNotFound{ dev: bdev_name.to_string() }),
             Some(bd) => bd,
         };
 
@@ -40,10 +42,8 @@ impl IscsiTarget {
             &bdev,
             ISCSI_PORTAL_GROUP_FE,
             ISCSI_INITIATOR_GROUP) {
-            Ok(_) => {
-                Ok(Self { bdev_name: bdev_name.to_string() })
-            },
-            Err(e) => return Err(IscsiError::StartIscsi{ dev: bdev_name.to_string(), err: e.to_string() }),
+            Ok(_) => Ok(Self { bdev_name: bdev_name.to_string() }),
+            Err(e) => Err(NexusIscsiError::CreateTargetFailed{ dev: bdev_name.to_string(), err: e.to_string() }),
         }
     }
 
@@ -60,13 +60,13 @@ impl IscsiTarget {
     }
 }
 
-impl fmt::Debug for IscsiTarget {
+impl fmt::Debug for NexusIscsiTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}@{:?}", self.get_iqn(), self.bdev_name)
     }
 }
 
-impl fmt::Display for IscsiTarget {
+impl fmt::Display for NexusIscsiTarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.get_iqn())
     }
