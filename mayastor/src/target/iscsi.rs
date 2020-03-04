@@ -58,6 +58,10 @@ pub enum Error {
     DestroyTarget { source: Errno },
 }
 
+pub enum Interface {
+    FrontEnd,
+    BackEnd,
+}
 impl RpcErrorCode for Error {
     fn rpc_error_code(&self) -> Code {
         Code::InternalError
@@ -154,10 +158,13 @@ pub fn fini() {
 
 /// Export given bdev over iscsi. That involves creating iscsi target and
 /// adding the bdev as LUN to it.
-pub fn share(uuid: &str, bdev: &Bdev) -> Result<()> {
+pub fn share(uuid: &str, bdev: &Bdev, side: Interface) -> Result<()> {
 
-    let iqn = construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?;
-    info!("Created iscsi backend target {} for {}", iqn, uuid );
+    let iqn = match side {
+        Interface::FrontEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
+        Interface::BackEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
+    };
+    info!("Created iscsi target {} for {}", iqn, uuid );
     Ok(())
 }
 
@@ -184,7 +191,7 @@ pub async fn unshare(uuid: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
+fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
@@ -227,7 +234,7 @@ pub fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_id
     }
 }
 
-pub fn init_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
+fn init_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
     let portal_port = CString::new(port_no.to_string()).unwrap();
     let portal_host = CString::new(address.to_owned()).unwrap();
     let pg = unsafe { spdk_iscsi_portal_grp_create(pg_no) };

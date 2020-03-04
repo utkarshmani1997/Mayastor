@@ -41,6 +41,7 @@ use crate::{
     jsonrpc::{jsonrpc_register, Code, RpcErrorCode},
     pool::Pool,
     target,
+    target::iscsi,
 };
 
 /// These are high-level context errors one for each rpc method.
@@ -286,7 +287,7 @@ impl Replica {
                 .await
                 .context(ShareNvmf {})?,
             ShareType::Iscsi => {
-                target::iscsi::share(&uuid, &bdev).context(ShareIscsi {})?
+                target::iscsi::share(&uuid, &bdev, iscsi::Interface::BackEnd).context(ShareIscsi {})?
             }
         }
         Ok(())

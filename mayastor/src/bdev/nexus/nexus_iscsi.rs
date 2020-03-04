@@ -8,19 +8,18 @@ use snafu::{Snafu};
 
 use crate::{
     core::Bdev,
-    target::iscsi::construct_iscsi_target,
-    target::iscsi::ISCSI_PORTAL_GROUP_FE,
-    target::iscsi::ISCSI_INITIATOR_GROUP,
+    target::iscsi::share,
     target::iscsi::target_name,
     target::iscsi::unshare,
+    target::iscsi::Interface,
 };
 
 #[derive(Debug, Snafu)]
 pub enum NexusIscsiError {
-    #[snafu(display("Failed to create iscsi target for bdev uuid {}, error {}", dev, err))]
-    CreateTargetFailed { dev: String, err: String },
     #[snafu(display("Bdev not found {}", dev))]
     BdevNotFound { dev: String },
+    #[snafu(display("Failed to create iscsi target for bdev uuid {}, error {}", dev, err))]
+    CreateTargetFailed { dev: String, err: String },
 }
 
 /// Iscsi target representation.
@@ -38,10 +37,9 @@ impl NexusIscsiTarget {
             Some(bd) => bd,
         };
 
-        match construct_iscsi_target(bdev_name,
+        match share(bdev_name,
             &bdev,
-            ISCSI_PORTAL_GROUP_FE,
-            ISCSI_INITIATOR_GROUP) {
+            Interface::FrontEnd) {
             Ok(_) => Ok(Self { bdev_name: bdev_name.to_string() }),
             Err(e) => Err(NexusIscsiError::CreateTargetFailed{ dev: bdev_name.to_string(), err: e.to_string() }),
         }
@@ -50,8 +48,8 @@ impl NexusIscsiTarget {
     pub async fn destroy(self) {
         info!("Destroying iscsi frontend target");
         match unshare(&self.bdev_name).await {
-            Ok(_) => (),
-            Err(e) =>  error!("Failed to destroy iscsi frontend target {}", e),
+            Ok(()) => (),
+            Err(e) =>  error!("Failed to destroy iscsi frontend target, error {}", e),
         }
     }
 
