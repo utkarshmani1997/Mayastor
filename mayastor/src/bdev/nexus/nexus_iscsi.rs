@@ -7,11 +7,8 @@ use std::{
 use snafu::{Snafu};
 
 use crate::{
-    core::Bdev,
-    target::iscsi::share,
-    target::iscsi::target_name,
-    target::iscsi::unshare,
-    target::iscsi::Interface,
+    core::{Bdev, Side},
+    target::iscsi::{share, target_name, unshare}
 };
 
 #[derive(Debug, Snafu)]
@@ -39,7 +36,7 @@ impl NexusIscsiTarget {
 
         match share(bdev_name,
             &bdev,
-            Interface::FrontEnd) {
+            Side::FrontEnd) {
             Ok(_) => Ok(Self { bdev_name: bdev_name.to_string() }),
             Err(e) => Err(NexusIscsiError::CreateTargetFailed{ dev: bdev_name.to_string(), err: e.to_string() }),
         }

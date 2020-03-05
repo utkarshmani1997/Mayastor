@@ -11,7 +11,6 @@ use std::{
     os::raw::{c_char, c_int},
     ptr,
 };
-
 use futures::channel::oneshot;
 use nix::errno::Errno;
 use snafu::{ResultExt, Snafu};
@@ -34,7 +33,7 @@ use spdk_sys::{
 };
 
 use crate::{
-    core::Bdev,
+    core::{Bdev, Side},
     ffihelper::{cb_arg, done_errno_cb, ErrnoResult},
     jsonrpc::{Code, RpcErrorCode},
 };
@@ -58,10 +57,6 @@ pub enum Error {
     DestroyTarget { source: Errno },
 }
 
-pub enum Interface {
-    FrontEnd,
-    BackEnd,
-}
 impl RpcErrorCode for Error {
     fn rpc_error_code(&self) -> Code {
         Code::InternalError
@@ -158,11 +153,11 @@ pub fn fini() {
 
 /// Export given bdev over iscsi. That involves creating iscsi target and
 /// adding the bdev as LUN to it.
-pub fn share(uuid: &str, bdev: &Bdev, side: Interface) -> Result<()> {
+pub fn share(uuid: &str, bdev: &Bdev, side: Side) -> Result<()> {
 
     let iqn = match side {
-        Interface::FrontEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
-        Interface::BackEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
+        Side::FrontEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
+        Side::BackEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
     };
     info!("Created iscsi target {} for {}", iqn, uuid );
     Ok(())

@@ -78,3 +78,9 @@ pub enum CoreError {
         len: usize,
     },
 }
+
+// Which kind of target interface to use for a bdev, FrontEnd for CSI, BackEnd for replicas.
+pub enum Side {
+    FrontEnd,
+    BackEnd,
+}
