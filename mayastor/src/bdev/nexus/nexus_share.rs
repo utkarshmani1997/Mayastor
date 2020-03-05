@@ -112,7 +112,7 @@ impl Nexus {
                 let iscsi_target =
                     NexusIscsiTarget::create(&name).await.context(ShareIscsiNexus {
                         name: self.name.clone(),
-                    })?;            
+                    })?;
                 let iqn = iscsi_target.get_iqn();
                 self.share_handle = Some(name);
                 self.iscsi_target = Some(iscsi_target);
@@ -160,7 +160,7 @@ impl Nexus {
             },
             _ => return Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32}),
         };
-        
+
         let bdev_name = self.share_handle.take().unwrap();
         if let Some(bdev) = Bdev::lookup_by_name(&bdev_name) {
 

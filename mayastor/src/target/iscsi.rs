@@ -11,6 +11,7 @@ use std::{
     os::raw::{c_char, c_int},
     ptr,
 };
+
 use futures::channel::oneshot;
 use nix::errno::Errno;
 use snafu::{ResultExt, Snafu};
@@ -66,13 +67,13 @@ impl RpcErrorCode for Error {
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// iscsi target port number
-pub const ISCSI_PORT_FE: u16 = 3260;
-pub const ISCSI_PORT_BE: u16 = 3262;
+const ISCSI_PORT_FE: u16 = 3260;
+const ISCSI_PORT_BE: u16 = 3262;
 
-pub const ISCSI_PORTAL_GROUP_FE: c_int = 0;
-pub const ISCSI_PORTAL_GROUP_BE: c_int = 2;
+const ISCSI_PORTAL_GROUP_FE: c_int = 0;
+const ISCSI_PORTAL_GROUP_BE: c_int = 2;
 
-pub const ISCSI_INITIATOR_GROUP: c_int = 0; //only 1 for now
+const ISCSI_INITIATOR_GROUP: c_int = 0; //only 1 for now
 
 thread_local! {
     /// iscsi global state.

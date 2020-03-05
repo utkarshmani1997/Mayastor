@@ -624,7 +624,6 @@ impl Nexus {
         desc: *mut spdk_bdev_desc,
         ch: *mut spdk_io_channel,
     ) -> i32 {
-        //info!("attempting a read\n");
         let io = Bio(pio);
         let nexus = io.nexus_as_ref();
         unsafe {
