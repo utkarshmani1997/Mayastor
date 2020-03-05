@@ -97,30 +97,17 @@ pub fn target_name(uuid: &str) -> String {
 /// creating iscsi targets.
 pub fn init(address: &str) -> Result<()> {
 
-    if let Err(e) = init_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
-        destroy_iscsi_groups();
+    if let Err(e) = create_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
         return Err(e);
     }
-    if let Err(e) = init_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
-        destroy_iscsi_groups();
+    if let Err(e) = create_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
+        destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
         return Err(e);
     }
-
-    let initiator_host = CString::new("ANY").unwrap();
-    let initiator_netmask = CString::new("ANY").unwrap();
-
-    unsafe {
-        if spdk_iscsi_init_grp_create_from_initiator_list(
-            ISCSI_INITIATOR_GROUP,
-            1,
-            &mut (initiator_host.as_ptr() as *mut c_char) as *mut _,
-            1,
-            &mut (initiator_netmask.as_ptr() as *mut c_char) as *mut _,
-        ) != 0
-        {
-            destroy_iscsi_groups();
-            return Err(Error::CreateInitiatorGroup {});
-        }
+    if let Err(e) = create_initiator_group(ISCSI_INITIATOR_GROUP) {
+        destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
+        destroy_portal_group(ISCSI_PORTAL_GROUP_FE);
+        return Err(e);
     }
     ADDRESS.with(move |addr| {
         *addr.borrow_mut() = Some(address.to_owned());
@@ -132,20 +119,9 @@ pub fn init(address: &str) -> Result<()> {
 
 /// Destroy iscsi portal and initiator groups.
 fn destroy_iscsi_groups() {
-    unsafe {
-        let ig = spdk_iscsi_init_grp_unregister(ISCSI_INITIATOR_GROUP);
-        if !ig.is_null() {
-            spdk_iscsi_init_grp_destroy(ig);
-        }
-        let pg0 = spdk_iscsi_portal_grp_unregister(ISCSI_PORTAL_GROUP_FE);
-        if !pg0.is_null() {
-            spdk_iscsi_portal_grp_release(pg0);
-        }
-        let pg1 = spdk_iscsi_portal_grp_unregister(ISCSI_PORTAL_GROUP_BE);
-        if !pg1.is_null() {
-            spdk_iscsi_portal_grp_release(pg1);
-        }
-    }
+    destroy_initiator_group(ISCSI_INITIATOR_GROUP);
+    destroy_portal_group(ISCSI_PORTAL_GROUP_FE);
+    destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
 }
 
 pub fn fini() {
@@ -230,7 +206,36 @@ fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c
     }
 }
 
-fn init_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
+fn create_initiator_group(ig_idx: c_int) -> Result<()> {
+    let initiator_host = CString::new("ANY").unwrap();
+    let initiator_netmask = CString::new("ANY").unwrap();
+
+    unsafe {
+        if spdk_iscsi_init_grp_create_from_initiator_list(
+            ig_idx,
+            1,
+            &mut (initiator_host.as_ptr() as *mut c_char) as *mut _,
+            1,
+            &mut (initiator_netmask.as_ptr() as *mut c_char) as *mut _,
+        ) != 0
+        {
+            destroy_iscsi_groups();
+            return Err(Error::CreateInitiatorGroup {});
+        }
+    }
+    Ok(())
+}
+
+fn destroy_initiator_group(ig_idx: c_int) {
+    unsafe {
+        let ig = spdk_iscsi_init_grp_unregister(ig_idx);
+        if !ig.is_null() {
+            spdk_iscsi_init_grp_destroy(ig);
+        }
+    }
+}
+
+fn create_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
     let portal_port = CString::new(port_no.to_string()).unwrap();
     let portal_host = CString::new(address.to_owned()).unwrap();
     let pg = unsafe { spdk_iscsi_portal_grp_create(pg_no) };
@@ -260,7 +265,16 @@ fn init_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> {
     Ok(())
 }
 
-/// Return iscsi target URI understood by nexus
+fn destroy_portal_group(pg_idx: c_int) {
+    unsafe {
+        let pg = spdk_iscsi_portal_grp_unregister(pg_idx);
+        if !pg.is_null() {
+            spdk_iscsi_portal_grp_release(pg);
+        }
+    }
+}
+
+/// Return iscsi backend target URI understood by nexus
 pub fn get_uri(uuid: &str) -> Option<String> {
     let iqn = target_name(uuid);
     let c_iqn = CString::new(iqn.clone()).unwrap();
