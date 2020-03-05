@@ -5,7 +5,6 @@ use structopt::StructOpt;
 use jsonrpc::call;
 use rpc::mayastor::*;
 mod convert;
-use std::str::FromStr;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -91,8 +90,8 @@ enum Sub {
         uuid: String,
         /// Protocol to use when sharing the nexus.
         /// Can be NVMf, ISCSI, NBD
-        #[structopt(name = "protocol")]
-        protocol: String,
+        #[structopt(name = "protocol", parse(try_from_str = "convert::parse_proto"))]
+        protocol: ShareProtocol,
         /// 128 bit encryption key to be used for encrypting the data section
         /// of the nexus.
         #[structopt(name = "key", default_value = "")]
@@ -183,7 +182,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 &opt.socket,
                 "publish_nexus",
                 Some(json!({ "uuid": uuid,
-                    "share" : ShareProtocol::from_str(&protocol),
+                    "share" : protocol,
                     "key" : key,
                 })),
             )
