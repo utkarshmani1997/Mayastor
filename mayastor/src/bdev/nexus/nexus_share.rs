@@ -45,11 +45,6 @@ impl Nexus {
         share_proto: ShareProtocol,
         key: Option<String>,
     ) -> Result<String, Error> {
-        if self.nbd_disk.is_some() {
-            return Err(Error::AlreadyShared {
-                name: self.name.clone(),
-            });
-        }
 
         assert_eq!(self.share_handle, None);
         validate_frontend_protocol(share_proto)?;
@@ -91,6 +86,11 @@ impl Nexus {
             ShareProtocol::Nbd => {
                 // Publish the nexus to system using nbd device and return the path to
                 // nbd device.
+                if self.nbd_disk.is_some() {
+                    return Err(Error::AlreadyShared {
+                        name: self.name.clone(),
+                    });
+                }
 
                 let nbd_disk =
                     NbdDisk::create(&name).await.context(ShareNbdNexus {
@@ -102,6 +102,13 @@ impl Nexus {
                 Ok(device_path)
             },
             ShareProtocol::Iscsi => {
+                // Publish the nexus to system using an iscsi target and return the IQN
+                if self.iscsi_target.is_some() {
+                    return Err(Error::AlreadyShared {
+                        name: self.name.clone(),
+                    });
+                }
+
                 let iscsi_target =
                     NexusIscsiTarget::create(&name).await.context(ShareIscsiNexus {
                         name: self.name.clone(),
