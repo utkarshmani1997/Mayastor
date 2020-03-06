@@ -88,6 +88,10 @@ enum Sub {
         #[structopt(name = "uuid")]
         /// UUID of the nexus to be published
         uuid: String,
+        /// Protocol to use when sharing the nexus.
+        /// Can be NVMf, ISCSI, NBD
+        #[structopt(name = "protocol", parse(try_from_str = "convert::parse_proto"))]
+        protocol: ShareProtocol,
         /// 128 bit encryption key to be used for encrypting the data section
         /// of the nexus.
         #[structopt(name = "key", default_value = "")]
@@ -172,12 +176,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Sub::Publish {
             uuid,
             key,
+            protocol,
         } => serde_json::to_string_pretty(
             &call::<_, PublishNexusReply>(
                 &opt.socket,
                 "publish_nexus",
                 Some(json!({ "uuid": uuid,
-                    "share" : ShareProtocol::Nbd as i32,
+                    "share" : protocol as i32,
                     "key" : key,
                 })),
             )
