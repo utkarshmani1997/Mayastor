@@ -110,7 +110,7 @@ impl Nexus {
                 }
 
                 let iscsi_target =
-                    NexusIscsiTarget::create(&name).await.context(ShareIscsiNexus {
+                    NexusIscsiTarget::create(&name).context(ShareIscsiNexus {
                         name: self.name.clone(),
                     })?;
                 let iqn = iscsi_target.get_iqn();
