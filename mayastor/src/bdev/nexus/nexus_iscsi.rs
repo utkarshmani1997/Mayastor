@@ -51,7 +51,7 @@ impl NexusIscsiTarget {
     }
 
     pub fn get_iqn(&self) -> String {
-        return target_name(&self.bdev_name);
+        target_name(&self.bdev_name)
     }
 }
 

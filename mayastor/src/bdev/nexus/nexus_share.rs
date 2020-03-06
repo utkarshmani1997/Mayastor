@@ -42,14 +42,18 @@ fn validate_frontend_protocol(share_protocol : ShareProtocol) -> Result<SharePro
 impl Nexus {
     pub async fn share(
         &mut self,
-        share_proto: ShareProtocol,
+        share_protocol: ShareProtocol,
         key: Option<String>,
     ) -> Result<String, Error> {
 
         assert_eq!(self.share_handle, None);
-        validate_frontend_protocol(share_proto)?;
+        validate_frontend_protocol(share_protocol)?;
 
-        self.share_protocol = share_proto;
+        if self.iscsi_target.is_some() || self.nbd_disk.is_some() {
+            return Err(Error::AlreadyShared {
+                name: self.name.clone(),
+            });
+        }
 
         let name = if let Some(key) = key {
             let name = format!("crypto-{}", self.name);
@@ -82,47 +86,36 @@ impl Nexus {
         // The share handle is the actual bdev that is shared through the
         // various protocols.
 
-        match self.share_protocol {
+        let return_val = match share_protocol {
             ShareProtocol::Nbd => {
                 // Publish the nexus to system using nbd device and return the path to
                 // nbd device.
-                if self.nbd_disk.is_some() {
-                    return Err(Error::AlreadyShared {
-                        name: self.name.clone(),
-                    });
-                }
-
                 let nbd_disk =
                     NbdDisk::create(&name).await.context(ShareNbdNexus {
                         name: self.name.clone(),
                     })?;
                 let device_path = nbd_disk.get_path();
-                self.share_handle = Some(name);
                 self.nbd_disk = Some(nbd_disk);
                 Ok(device_path)
             },
             ShareProtocol::Iscsi => {
                 // Publish the nexus to system using an iscsi target and return the IQN
-                if self.iscsi_target.is_some() {
-                    return Err(Error::AlreadyShared {
-                        name: self.name.clone(),
-                    });
-                }
-
                 let iscsi_target =
                     NexusIscsiTarget::create(&name).context(ShareIscsiNexus {
                         name: self.name.clone(),
                     })?;
                 let iqn = iscsi_target.get_iqn();
-                self.share_handle = Some(name);
                 self.iscsi_target = Some(iscsi_target);
                 Ok(iqn)
             },
             ShareProtocol::Nvmf => {
-                Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32})
+                Err(Error::InvalidShareProtocol {sp_value: share_protocol as i32})
             },
-            _ => Err(Error::InvalidShareProtocol {sp_value: self.share_protocol as i32}),
-        }
+            _ => Err(Error::InvalidShareProtocol {sp_value: share_protocol as i32}),
+        };
+        self.share_handle = Some(name);
+        self.share_protocol = share_protocol;
+        return_val
     }
 
     /// Undo share operation on nexus. To the chain of bdevs are all claimed

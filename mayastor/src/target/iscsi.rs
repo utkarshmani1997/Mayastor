@@ -261,7 +261,7 @@ fn create_portal_group(address: &str, port_no: u16, pg_no: c_int) -> Result<()> 
             return Err(Error::RegisterPortalGroup {});
         }
     }
-    info!("Created iscsi portal group {}", pg_no);
+    info!("Created iscsi portal group no {}, address {}, port {}", pg_no, address, port_no);
     Ok(())
 }
 
