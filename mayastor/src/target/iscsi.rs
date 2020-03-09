@@ -88,9 +88,9 @@ thread_local! {
     static ADDRESS: RefCell<Option<String>> = RefCell::new(None);
 }
 
-/// Generate iqn based on provided uuid
-pub fn target_name(uuid: &str) -> String {
-    format!("iqn.2019-05.io.openebs:{}", uuid)
+/// Generate iqn based on provided bdev_name
+pub fn target_name(bdev_name: &str) -> String {
+    format!("iqn.2019-05.io.openebs:{}", bdev_name)
 }
 
 /// Create iscsi portal and initiator group which will be used later when
@@ -128,42 +128,7 @@ pub fn fini() {
     destroy_iscsi_groups();
 }
 
-/// Export given bdev over iscsi. That involves creating iscsi target and
-/// adding the bdev as LUN to it.
-pub fn share(uuid: &str, bdev: &Bdev, side: Side) -> Result<()> {
-
-    let iqn = match side {
-        Side::FrontEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
-        Side::BackEnd => construct_iscsi_target(uuid, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
-    };
-    info!("Created iscsi target {} for {}", iqn, uuid );
-    Ok(())
-}
-
-/// Undo export of a bdev over iscsi done above.
-pub async fn unshare(uuid: &str) -> Result<()> {
-    let (sender, receiver) = oneshot::channel::<ErrnoResult<()>>();
-    let iqn = target_name(uuid);
-    let c_iqn = CString::new(iqn.clone()).unwrap();
-
-    info!("Destroying iscsi target {}", iqn);
-
-    unsafe {
-        spdk_iscsi_shutdown_tgt_node_by_name(
-            c_iqn.as_ptr(),
-            Some(done_errno_cb),
-            cb_arg(sender),
-        );
-    }
-    receiver
-        .await
-        .expect("Cancellation is not supported")
-        .context(DestroyTarget {})?;
-    info!("Destroyed iscsi target {}", uuid);
-    Ok(())
-}
-
-fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
+fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
@@ -205,6 +170,43 @@ fn construct_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c
         Ok(iqn)
     }
 }
+
+/// Export given bdev over iscsi. That involves creating iscsi target and
+/// adding the bdev as LUN to it.
+pub fn share(bdev_name: &str, bdev: &Bdev, side: Side) -> Result<()> {
+
+    let iqn = match side {
+        Side::FrontEnd => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
+        Side::BackEnd => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
+    };
+    info!("Created iscsi target {} for {}", iqn, bdev_name );
+    Ok(())
+}
+
+/// Undo export of a bdev over iscsi done above.
+pub async fn unshare(bdev_name: &str) -> Result<()> {
+    let (sender, receiver) = oneshot::channel::<ErrnoResult<()>>();
+    let iqn = target_name(bdev_name);
+    let c_iqn = CString::new(iqn.clone()).unwrap();
+
+    info!("Destroying iscsi target {}", iqn);
+
+    unsafe {
+        spdk_iscsi_shutdown_tgt_node_by_name(
+            c_iqn.as_ptr(),
+            Some(done_errno_cb),
+            cb_arg(sender),
+        );
+    }
+    receiver
+        .await
+        .expect("Cancellation is not supported")
+        .context(DestroyTarget {})?;
+    info!("Destroyed iscsi target {}", bdev_name);
+    Ok(())
+}
+
+
 
 fn create_initiator_group(ig_idx: c_int) -> Result<()> {
     let initiator_host = CString::new("ANY").unwrap();
@@ -275,8 +277,8 @@ fn destroy_portal_group(pg_idx: c_int) {
 }
 
 /// Return iscsi backend target URI understood by nexus
-pub fn get_uri(uuid: &str) -> Option<String> {
-    let iqn = target_name(uuid);
+pub fn get_uri(bdev_name: &str) -> Option<String> {
+    let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
     let tgt = unsafe { spdk_iscsi_find_tgt_node(c_iqn.as_ptr()) };
 
