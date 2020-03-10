@@ -52,7 +52,15 @@ enum ShareProtocol {
   NONE = 0;   // not exposed
   NVMF = 1;   // NVMe over Fabrics (TCP)
   ISCSI = 2;  // iSCSI
-  NBD = 3;    // NBD
+}
+
+// Note that enum values use C++ scoping rules, meaning that enum values are siblings of their type,
+// not children of it.
+// So cannot use NBD, NVMF, and ISCSI as symbols for ShareProtocolNexus
+enum ShareProtocolNexus {
+  NBD_FE = 0;    // local
+  NVMF_FE = 1;   // NVMe over Fabrics (TCP)
+  ISCSI_FE = 2;  // iSCSI
 }
 
 // Create replica arguments.
@@ -172,7 +180,7 @@ message RemoveChildNexusRequest {
 message PublishNexusRequest {
   string uuid = 1; // uuid of the nexus which to create device for
   string key = 2; // encryption key
-  ShareProtocol share = 3;  // protocol used for the front end.
+  ShareProtocolNexus share = 3;  // protocol used for the front end.
 }
 
 message PublishNexusReply {

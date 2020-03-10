@@ -91,7 +91,7 @@ enum Sub {
         /// Protocol to use when sharing the nexus.
         /// Can be NVMf, ISCSI, NBD
         #[structopt(name = "protocol", parse(try_from_str = "convert::parse_proto"))]
-        protocol: ShareProtocol,
+        protocol: ShareProtocolNexus,
         /// 128 bit encryption key to be used for encrypting the data section
         /// of the nexus.
         #[structopt(name = "key", default_value = "")]

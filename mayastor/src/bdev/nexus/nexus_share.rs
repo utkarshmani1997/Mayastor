@@ -21,40 +21,29 @@ use crate::{
 };
 
 use rpc::mayastor::{
-    ShareProtocol,
+    ShareProtocolNexus,
 };
 
 /// we are using the multi buffer encryption implementation using CBC as the
 /// algorithm
 const CRYPTO_FLAVOUR: &str = "crypto_aesni_mb";
 
-fn validate_frontend_protocol(share_protocol : ShareProtocol) -> Result<ShareProtocol, Error>  {
-    match share_protocol {
-        ShareProtocol::Nvmf => Ok(ShareProtocol::Nvmf),
-        ShareProtocol::Iscsi => Ok(ShareProtocol::Iscsi),
-        ShareProtocol::Nbd => Ok(ShareProtocol::Nbd),
-        _ => Err(Error::InvalidShareProtocol {sp_value: share_protocol as i32}),
-    }
-}
-
 impl Nexus {
     /// Publish the nexus to system using nbd device and return the path to
     /// nbd device.
     pub async fn share(
         &mut self,
-        share_proto: ShareProtocol,
+        share_protocol: ShareProtocolNexus,
         key: Option<String>,
     ) -> Result<String, Error> {
-        if self.nbd_disk.is_some() {
+        if self.share_protocol.is_some() {
             return Err(Error::AlreadyShared {
                 name: self.name.clone(),
             });
         }
 
         assert_eq!(self.share_handle, None);
-        validate_frontend_protocol(share_proto)?;
 
-        self.share_protocol = share_proto;
 
         // TODO for now we discard and ignore share_proto
 
@@ -94,6 +83,7 @@ impl Nexus {
         let device_path = disk.get_path();
         self.share_handle = Some(name);
         self.nbd_disk = Some(disk);
+        self.share_protocol = Some(share_protocol);
         Ok(device_path)
     }
 
@@ -104,7 +94,7 @@ impl Nexus {
     pub async fn unshare(&mut self) -> Result<(), Error> {
         match self.nbd_disk.take() {
             Some(disk) => {
-                if validate_frontend_protocol(self.share_protocol).is_err() {
+                if self.share_protocol.is_none() {
                     return Err(Error::NotShared { name: self.name.clone(),});
                 }
 
@@ -132,7 +122,7 @@ impl Nexus {
                 } else {
                     warn!("Missing bdev for a shared device");
                 }
-                self.share_protocol = ShareProtocol::None;
+                self.share_protocol = None;
                 Ok(())
             }
             None => Err(Error::NotShared {

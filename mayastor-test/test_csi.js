@@ -202,7 +202,7 @@ describe('csi', function() {
                     uuid: uuid,
                     key: '',
                     // TODO: repeat this test for iSCSI and Nvmf
-                    share: mayastorProtoConstants.ShareProtocol.NBD,
+                    share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
                 },
                 next
               );

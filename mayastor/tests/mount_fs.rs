@@ -6,7 +6,7 @@ use mayastor::{
 };
 
 use rpc::mayastor::{
-    ShareProtocol,
+    ShareProtocolNexus,
 };
 
 static DISKNAME1: &str = "/tmp/disk1.img";
@@ -25,7 +25,7 @@ fn mount_fs() {
         let nexus = nexus_lookup("nexus").unwrap();
 
         //TODO: repeat this test for NVMF and ISCSI
-        let device = nexus.share(ShareProtocol::Nbd, None).await.unwrap();
+        let device = nexus.share(ShareProtocolNexus::NbdFe, None).await.unwrap();
         let (s, r) = unbounded();
 
         // create an XFS filesystem on the nexus device, mount it, create a file
@@ -52,8 +52,8 @@ fn mount_fs() {
 
         // share both nexuses
         //TODO: repeat this test for NVMF and ISCSI, and permutations?
-        let left_device = left.share(ShareProtocol::Nbd, None).await.unwrap();
-        let right_device = right.share(ShareProtocol::Nbd, None).await.unwrap();
+        let left_device = left.share(ShareProtocolNexus::NbdFe, None).await.unwrap();
+        let right_device = right.share(ShareProtocolNexus::NbdFe, None).await.unwrap();
 
         let s1 = s.clone();
         std::thread::spawn(move || {
@@ -98,7 +98,7 @@ fn mount_fs_1() {
         let nexus = nexus_lookup("nexus").unwrap();
 
         //TODO: repeat this test for NVMF and ISCSI
-        let device = nexus.share(ShareProtocol::Nbd, None).await.unwrap();
+        let device = nexus.share(ShareProtocolNexus::NbdFe, None).await.unwrap();
 
         std::thread::spawn(move || {
             for _i in 0 .. 10 {
@@ -120,7 +120,7 @@ fn mount_fs_2() {
         let nexus = nexus_lookup("nexus").unwrap();
 
         //TODO: repeat this test for NVMF and ISCSI
-        let device = nexus.share(ShareProtocol::Nbd, None).await.unwrap();
+        let device = nexus.share(ShareProtocolNexus::NbdFe, None).await.unwrap();
         let (s, r) = unbounded::<String>();
 
         std::thread::spawn(move || s.send(common::fio_run_verify(&device)));
