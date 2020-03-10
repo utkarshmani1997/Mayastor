@@ -49,7 +49,7 @@ use crate::{
 };
 
 use rpc::mayastor::{
-    ShareProtocol,
+    ShareProtocolNexus,
 };
 
 /// Common errors for nexus basic operations and child operations
@@ -203,7 +203,7 @@ pub struct Nexus {
     /// to be shared with vbdevs on top
     pub(crate) share_handle: Option<String>,
     /// frontend share protocol used when the nexus is published
-    pub share_protocol: ShareProtocol,
+    pub share_protocol: Option<ShareProtocolNexus>,
     /// iscsi target which the nexus is exposed through
     pub(crate) iscsi_target: Option<NexusIscsiTarget>,
 }
@@ -283,7 +283,7 @@ impl Nexus {
             iscsi_target: None,
             share_handle: None,
             size,
-            share_protocol: ShareProtocol::None,
+            share_protocol: None,
         });
 
         n.bdev.set_uuid(match uuid {

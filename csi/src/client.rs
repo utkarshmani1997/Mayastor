@@ -229,9 +229,6 @@ async fn list_replicas(
                     Some(rpc::mayastor::ShareProtocol::Iscsi) => {
                         "iscsi"
                     }
-                    Some(rpc::mayastor::ShareProtocol::Nbd) => {
-                        "nbd"
-                    }
                     None => "unknown",
                 },
                 ByteSize::b(r.size).to_string_as(true),

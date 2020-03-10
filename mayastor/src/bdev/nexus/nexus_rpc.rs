@@ -13,7 +13,7 @@ use rpc::mayastor::{
     PublishNexusRequest,
     RemoveChildNexusRequest,
     UnpublishNexusRequest,
-    ShareProtocol,
+    ShareProtocolNexus,
 };
 
 use crate::{
@@ -132,7 +132,7 @@ pub(crate) fn register_rpc_methods() {
             let key: Option<String> =
                 if args.key == "" { None } else { Some(args.key) };
 
-            let share_proto = ShareProtocol::from_i32(args.share);
+            let share_proto = ShareProtocolNexus::from_i32(args.share);
             if share_proto.is_none() {
                 return Err(Error::InvalidShareProtocol {sp_value: args.share as i32});
             }

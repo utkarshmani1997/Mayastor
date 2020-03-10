@@ -1,4 +1,5 @@
 use byte_unit::Byte;
+use rpc::mayastor::ShareProtocolNexus;
 
 /// converts a human string into a blocklen
 #[allow(dead_code)]
@@ -21,5 +22,14 @@ pub(crate) fn parse_size(src: &str) -> Result<u64, String> {
         Ok(val.get_bytes() as u64)
     } else {
         Err(src.to_string())
+    }
+}
+
+pub (crate) fn parse_proto(src: &str) -> Result<ShareProtocolNexus, &str> {
+    match src.to_lowercase().trim() {
+        "nbd" => Ok(ShareProtocolNexus::NbdFe),
+        "nvmf" => Ok(ShareProtocolNexus::NvmfFe),
+        "iscsi" => Ok(ShareProtocolNexus::IscsiFe),
+        _ => Err("Protocol needs be either NVMf, ISCI or NBD"),
     }
 }
