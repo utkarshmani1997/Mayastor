@@ -199,10 +199,10 @@ describe('csi', function() {
               common.dumbCommand(
                 'publish_nexus',
                 {
-                    uuid: uuid,
-                    key: '',
-                    // TODO: repeat this test for iSCSI and Nvmf
-                    share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
+                  uuid: uuid,
+                  key: '',
+                  // TODO: repeat this test for iSCSI and Nvmf
+                  share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
                 },
                 next
               );
