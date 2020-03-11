@@ -163,7 +163,6 @@ fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, mut pg_idx: c_int, mut ig
         error!("Failed to create iscsi target {}", iqn);
         Err(Error::CreateTarget {})
     } else {
-        info!("Created iscsi target {}", iqn);
         Ok(iqn)
     }
 }

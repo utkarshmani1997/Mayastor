@@ -5,6 +5,7 @@
 //! application needs synchronous mirroring may be required.
 
 use std::{
+    fmt,
     fmt::{Display, Formatter},
     os::raw::c_void,
 };
@@ -48,10 +49,6 @@ use crate::{
     nexus_uri::BdevCreateDestroy,
 };
 
-use rpc::mayastor::{
-    ShareProtocolNexus,
-};
-
 /// Common errors for nexus basic operations and child operations
 /// which are part of nexus object.
 #[derive(Debug, Snafu)]
@@ -67,7 +64,7 @@ pub enum Error {
     CreateCryptoBdev { source: Errno, name: String },
     #[snafu(display("Failed to destroy crypto bdev for nexus {}", name))]
     DestroyCryptoBdev { source: Errno, name: String },
-    #[snafu(display("The nexus {} has been already shared", name))]
+    #[snafu(display("The nexus {} has been already shared with a different protocol", name))]
     AlreadyShared { name: String },
     #[snafu(display("The nexus {} has not been shared", name))]
     NotShared { name: String },
@@ -176,6 +173,20 @@ impl RpcErrorCode for Error {
 
 pub(crate) static NEXUS_PRODUCT_ID: &str = "Nexus CAS Driver v0.0.1";
 
+pub enum NexusTarget {
+    NbdDisk(NbdDisk),
+    NexusIscsiTarget(NexusIscsiTarget),
+}
+
+impl fmt::Debug for NexusTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            NexusTarget::NbdDisk( disk ) => fmt::Debug::fmt(&disk, f),
+            NexusTarget::NexusIscsiTarget( tgt ) => fmt::Debug::fmt(&tgt, f),
+        }
+    }
+}
+
 /// The main nexus structure
 #[derive(Debug)]
 pub struct Nexus {
@@ -197,15 +208,11 @@ pub struct Nexus {
     pub dr_complete_notify: Option<oneshot::Sender<i32>>,
     /// the offset in num blocks where the data partition starts
     pub data_ent_offset: u64,
-    /// nbd device which the nexus is exposed through
-    pub(crate) nbd_disk: Option<NbdDisk>,
     /// the handle to be used when sharing the nexus, this allows for the bdev
     /// to be shared with vbdevs on top
     pub(crate) share_handle: Option<String>,
-    /// frontend share protocol used when the nexus is published
-    pub share_protocol: Option<ShareProtocolNexus>,
-    /// iscsi target which the nexus is exposed through
-    pub(crate) iscsi_target: Option<NexusIscsiTarget>,
+    /// enum containing the protocol-specific target used to publish the nexus
+    pub nexus_target: Option<NexusTarget>,
 }
 
 unsafe impl core::marker::Sync for Nexus {}
@@ -279,11 +286,9 @@ impl Nexus {
             bdev_raw: Box::into_raw(b),
             dr_complete_notify: None,
             data_ent_offset: 0,
-            nbd_disk: None,
-            iscsi_target: None,
             share_handle: None,
             size,
-            share_protocol: None,
+            nexus_target: None,
         });
 
         n.bdev.set_uuid(match uuid {
