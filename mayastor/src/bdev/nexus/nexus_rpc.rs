@@ -132,13 +132,13 @@ pub(crate) fn register_rpc_methods() {
             let key: Option<String> =
                 if args.key == "" { None } else { Some(args.key) };
 
-            let share_proto = ShareProtocolNexus::from_i32(args.share);
-            if share_proto.is_none() {
-                return Err(Error::InvalidShareProtocol {sp_value: args.share as i32});
-            }
+            let share_protocol = match ShareProtocolNexus::from_i32(args.share) {
+                Some(protocol) => protocol,
+                None => return Err(Error::InvalidShareProtocol {sp_value: args.share as i32})
+            };
 
             let nexus = nexus_lookup(&args.uuid)?;
-            nexus.share(share_proto.unwrap(), key).await.map(|device_path| PublishNexusReply {
+            nexus.share(share_protocol, key).await.map(|device_path| PublishNexusReply {
                 device_path,
             })
         };
