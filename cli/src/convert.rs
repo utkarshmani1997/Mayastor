@@ -30,6 +30,6 @@ pub (crate) fn parse_proto(src: &str) -> Result<ShareProtocolNexus, &str> {
         "nbd" => Ok(ShareProtocolNexus::NexusNbd),
         "nvmf" => Ok(ShareProtocolNexus::NexusNvmf),
         "iscsi" => Ok(ShareProtocolNexus::NexusIscsi),
-        _ => Err("Protocol needs be either NVMf, ISCI or NBD"),
+        _ => Err("Protocol needs be either NVMf, iSCSI or NBD"),
     }
 }
