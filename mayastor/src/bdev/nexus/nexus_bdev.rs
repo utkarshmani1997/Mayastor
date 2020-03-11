@@ -71,7 +71,7 @@ pub enum Error {
     AlreadyShared { name: String },
     #[snafu(display("The nexus {} has not been shared", name))]
     NotShared { name: String },
-    #[snafu(display("Failed to share NBD nexus {}", name))]
+    #[snafu(display("Failed to share nexus over NBD {}", name))]
     ShareNbdNexus { source: NbdError, name: String },
     #[snafu(display("Failed to share iscsi nexus {}", name))]
     ShareIscsiNexus { source: NexusIscsiError, name: String },

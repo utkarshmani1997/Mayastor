@@ -76,7 +76,7 @@ impl Nexus {
         // The share handle is the actual bdev that is shared through the
         // various protocols.
 
-        let return_val = match share_protocol {
+        let device_id = match share_protocol {
             ShareProtocolNexus::NbdFe => {
                 // Publish the nexus to system using nbd device and return the path to
                 // nbd device.
@@ -86,7 +86,7 @@ impl Nexus {
                     })?;
                 let device_path = nbd_disk.get_path();
                 self.nbd_disk = Some(nbd_disk);
-                Ok(device_path)
+                device_path
             },
             ShareProtocolNexus::IscsiFe => {
                 // Publish the nexus to system using an iscsi target and return the IQN
@@ -96,7 +96,7 @@ impl Nexus {
                     })?;
                 let iqn = iscsi_target.get_iqn();
                 self.iscsi_target = Some(iscsi_target);
-                Ok(iqn)
+                iqn
             },
             ShareProtocolNexus::NvmfFe => {
                 return Err(Error::InvalidShareProtocol {sp_value: share_protocol as i32})
@@ -104,7 +104,7 @@ impl Nexus {
         };
         self.share_handle = Some(name);
         self.share_protocol = Some(share_protocol);
-        return_val
+        Ok(device_id)
     }
 
     /// Undo share operation on nexus. To the chain of bdevs are all claimed

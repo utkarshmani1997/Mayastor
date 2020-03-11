@@ -97,9 +97,8 @@ pub fn target_name(bdev_name: &str) -> String {
 /// creating iscsi targets.
 pub fn init(address: &str) -> Result<()> {
 
-    if let Err(e) = create_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE) {
-        return Err(e);
-    }
+    create_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE)?;
+    
     if let Err(e) = create_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
         destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
         return Err(e);
@@ -128,12 +127,10 @@ pub fn fini() {
     destroy_iscsi_groups();
 }
 
-fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_int ) -> Result<String ,Error>{
+fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, mut pg_idx: c_int, mut ig_idx: c_int ) -> Result<String ,Error>{
 
     let iqn = target_name(bdev_name);
     let c_iqn = CString::new(iqn.clone()).unwrap();
-    let mut portal_group_idx = pg_idx;
-    let mut init_group_idx = ig_idx;
 
     let mut lun_id: c_int = 0;
     let idx = ISCSI_IDX.with(move |iscsi_idx| {
@@ -147,8 +144,8 @@ fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, pg_idx: c_int, ig_idx: c_
             idx,                             // target_index
             c_iqn.as_ptr(),                  // name
             ptr::null(),                     // alias
-            &mut portal_group_idx as *mut _, // pg_tag_list
-            &mut init_group_idx as *mut _,   // ig_tag_list
+            &mut pg_idx as *mut _,           // pg_tag_list
+            &mut ig_idx as *mut _,           // ig_tag_list
             1,                                       // portal and initiator group list length
             &mut spdk_bdev_get_name(bdev.as_ptr()),  // bdev name, how iscsi target gets associated with a bdev
             &mut lun_id as *mut _,           // lun id
