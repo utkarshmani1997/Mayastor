@@ -19,7 +19,7 @@ use rpc::mayastor::{
     ListReplicasReply,
     Replica as ReplicaJson,
     ReplicaStats,
-    ShareProtocol,
+    ShareProtocolReplica,
     ShareReplicaReply,
     ShareReplicaRequest,
     StatReplicasReply,
@@ -436,7 +436,7 @@ pub fn register_replica_methods() {
         "create_replica",
         |args: CreateReplicaRequest| {
             let fut = async move {
-                let want_share = match ShareProtocol::from_i32(args.share) {
+                let want_share = match ShareProtocolReplica::from_i32(args.share) {
                     Some(val) => val,
                     None => Err(Error::InvalidProtocol {
                         protocol: args.share,
@@ -456,19 +456,19 @@ pub fn register_replica_methods() {
 
                 // TODO: destroy replica if the share operation fails
                 match want_share {
-                    ShareProtocol::Nvmf => replica
+                    ShareProtocolReplica::ReplicaNvmf => replica
                         .share(ShareType::Nvmf)
                         .await
                         .context(CreateReplica {
                             uuid: args.uuid.clone(),
                         })?,
-                    ShareProtocol::Iscsi => replica
+                    ShareProtocolReplica::ReplicaIscsi => replica
                         .share(ShareType::Iscsi)
                         .await
                         .context(CreateReplica {
                             uuid: args.uuid.clone(),
                         })?,
-                    ShareProtocol::None => (),
+                    ShareProtocolReplica::ReplicaNone => (),
                 }
                 Ok(CreateReplicaReply {
                     uri: replica.get_share_uri(),
@@ -509,10 +509,10 @@ pub fn register_replica_methods() {
                     thin: r.is_thin(),
                     share: match r.get_share_type() {
                         Some(share_type) => match share_type {
-                            ShareType::Iscsi => ShareProtocol::Iscsi as i32,
-                            ShareType::Nvmf => ShareProtocol::Nvmf as i32,
+                            ShareType::Iscsi => ShareProtocolReplica::ReplicaIscsi as i32,
+                            ShareType::Nvmf => ShareProtocolReplica::ReplicaNvmf as i32,
                         },
-                        None => ShareProtocol::None as i32,
+                        None => ShareProtocolReplica::ReplicaNone as i32,
                     },
                     uri: r.get_share_uri(),
                 })
@@ -569,7 +569,7 @@ pub fn register_replica_methods() {
         "share_replica",
         |args: ShareReplicaRequest| {
             let fut = async move {
-                let want_share = match ShareProtocol::from_i32(args.share) {
+                let want_share = match ShareProtocolReplica::from_i32(args.share) {
                     Some(val) => val,
                     None => Err(Error::InvalidProtocol {
                         protocol: args.share,
@@ -589,8 +589,8 @@ pub fn register_replica_methods() {
                 // first unshare the replica if there is a protocol change
                 let unshare = match replica.get_share_type() {
                     Some(share_type) => match share_type {
-                        ShareType::Iscsi => want_share != ShareProtocol::Iscsi,
-                        ShareType::Nvmf => want_share != ShareProtocol::Nvmf,
+                        ShareType::Iscsi => want_share != ShareProtocolReplica::ReplicaIscsi,
+                        ShareType::Nvmf => want_share != ShareProtocolReplica::ReplicaNvmf,
                     },
                     None => false,
                 };
@@ -603,19 +603,19 @@ pub fn register_replica_methods() {
                 // shared
                 if replica.get_share_type().is_none() {
                     match want_share {
-                        ShareProtocol::Iscsi => replica
+                        ShareProtocolReplica::ReplicaIscsi => replica
                             .share(ShareType::Iscsi)
                             .await
                             .context(ShareReplica {
                                 uuid: args.uuid.clone(),
                             })?,
-                        ShareProtocol::Nvmf => replica
+                        ShareProtocolReplica::ReplicaNvmf => replica
                             .share(ShareType::Nvmf)
                             .await
                             .context(ShareReplica {
                                 uuid: args.uuid.clone(),
                             })?,
-                        ShareProtocol::None => (),
+                        ShareProtocolReplica::ReplicaNone => (),
                     }
                 }
                 Ok(ShareReplicaReply {

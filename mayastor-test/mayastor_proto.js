@@ -22,29 +22,29 @@ function getConstants() {
     )
   );
 
-  //FIXME: the correct way to do this is to enumerate all the members of ShareProtocol,
+  //FIXME: the correct way to do this is to enumerate all the members,
   // and create the map from that. This will do for now.
   return {
-    ShareProtocol: {
-      NONE: pkgDef.mayastor.ShareProtocol.type.value.find(
-        ent => ent.name == 'NONE'
+    ShareProtocolReplica: {
+      NONE: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+        ent => ent.name == 'REPLICA_NONE'
       ).number,
-      NVMF: pkgDef.mayastor.ShareProtocol.type.value.find(
-        ent => ent.name == 'NVMF'
+      NVMF: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+        ent => ent.name == 'REPLICA_NVMF'
       ).number,
-      ISCSI: pkgDef.mayastor.ShareProtocol.type.value.find(
-        ent => ent.name == 'ISCSI'
+      ISCSI: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+        ent => ent.name == 'REPLICA_ISCSI'
       ).number,
     },
     ShareProtocolNexus: {
       NBD_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
-        ent => ent.name == 'NBD_FE'
+        ent => ent.name == 'NEXUS_NBD'
       ).number,
       NVMF_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
-        ent => ent.name == 'NVMF_FE'
+        ent => ent.name == 'NEXUS_NVMF'
       ).number,
       ISCSI_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
-        ent => ent.name == 'ISCSI_FE'
+        ent => ent.name == 'NEXUS_ISCSI'
       ).number,
     },
   };
