@@ -67,11 +67,11 @@ impl RpcErrorCode for Error {
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// iscsi target port number
-const ISCSI_PORT_FE: u16 = 3260;
-const ISCSI_PORT_BE: u16 = 3262;
+const ISCSI_PORT_NEXUS: u16 = 3260;
+const ISCSI_PORT_REPLICA: u16 = 3262;
 
-const ISCSI_PORTAL_GROUP_FE: c_int = 0;
-const ISCSI_PORTAL_GROUP_BE: c_int = 2;
+const ISCSI_PORTAL_GROUP_NEXUS: c_int = 0;
+const ISCSI_PORTAL_GROUP_REPLICA: c_int = 2;
 
 const ISCSI_INITIATOR_GROUP: c_int = 0; //only 1 for now
 
@@ -97,15 +97,15 @@ pub fn target_name(bdev_name: &str) -> String {
 /// creating iscsi targets.
 pub fn init(address: &str) -> Result<()> {
 
-    create_portal_group(address, ISCSI_PORT_BE, ISCSI_PORTAL_GROUP_BE)?;
+    create_portal_group(address, ISCSI_PORT_REPLICA, ISCSI_PORTAL_GROUP_REPLICA)?;
     
-    if let Err(e) = create_portal_group(address, ISCSI_PORT_FE, ISCSI_PORTAL_GROUP_FE) {
-        destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
+    if let Err(e) = create_portal_group(address, ISCSI_PORT_NEXUS, ISCSI_PORTAL_GROUP_NEXUS) {
+        destroy_portal_group(ISCSI_PORTAL_GROUP_REPLICA);
         return Err(e);
     }
     if let Err(e) = create_initiator_group(ISCSI_INITIATOR_GROUP) {
-        destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
-        destroy_portal_group(ISCSI_PORTAL_GROUP_FE);
+        destroy_portal_group(ISCSI_PORTAL_GROUP_REPLICA);
+        destroy_portal_group(ISCSI_PORTAL_GROUP_NEXUS);
         return Err(e);
     }
     ADDRESS.with(move |addr| {
@@ -119,8 +119,8 @@ pub fn init(address: &str) -> Result<()> {
 /// Destroy iscsi portal and initiator groups.
 fn destroy_iscsi_groups() {
     destroy_initiator_group(ISCSI_INITIATOR_GROUP);
-    destroy_portal_group(ISCSI_PORTAL_GROUP_FE);
-    destroy_portal_group(ISCSI_PORTAL_GROUP_BE);
+    destroy_portal_group(ISCSI_PORTAL_GROUP_NEXUS);
+    destroy_portal_group(ISCSI_PORTAL_GROUP_REPLICA);
 }
 
 pub fn fini() {
@@ -172,8 +172,8 @@ fn share_as_iscsi_target(bdev_name: &str, bdev: &Bdev, mut pg_idx: c_int, mut ig
 pub fn share(bdev_name: &str, bdev: &Bdev, side: Side) -> Result<()> {
 
     let iqn = match side {
-        Side::FrontEnd => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_FE, ISCSI_INITIATOR_GROUP)?,
-        Side::BackEnd => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_BE, ISCSI_INITIATOR_GROUP)?,
+        Side::Nexus => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_NEXUS, ISCSI_INITIATOR_GROUP)?,
+        Side::Replica => share_as_iscsi_target(bdev_name, bdev, ISCSI_PORTAL_GROUP_REPLICA, ISCSI_INITIATOR_GROUP)?,
     };
     info!("Created iscsi target {} for {}", iqn, bdev_name );
     Ok(())
@@ -285,6 +285,6 @@ pub fn get_uri(bdev_name: &str) -> Option<String> {
     ADDRESS.with(move |a| {
         let a_borrow = a.borrow();
         let address = a_borrow.as_ref().unwrap();
-        Some(format!("iscsi://{}:{}/{}", address, ISCSI_PORT_BE, iqn))
+        Some(format!("iscsi://{}:{}/{}", address, ISCSI_PORT_REPLICA, iqn))
     })
 }

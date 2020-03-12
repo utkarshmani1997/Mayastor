@@ -36,7 +36,7 @@ impl NexusIscsiTarget {
 
         match share(bdev_name,
             &bdev,
-            Side::FrontEnd) {
+            Side::Nexus) {
             Ok(_) => Ok(Self { bdev_name: bdev_name.to_string() }),
             Err(e) => Err(NexusIscsiError::CreateTargetFailed{ dev: bdev_name.to_string(), err: e.to_string() }),
         }
