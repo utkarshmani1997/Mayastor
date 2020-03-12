@@ -26,24 +26,24 @@ function getConstants() {
   // and create the map from that. This will do for now.
   return {
     ShareProtocolReplica: {
-      NONE: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+      REPLICA_NONE: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
         ent => ent.name == 'REPLICA_NONE'
       ).number,
-      NVMF: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+      REPLICA_NVMF: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
         ent => ent.name == 'REPLICA_NVMF'
       ).number,
-      ISCSI: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
+      REPLICA_ISCSI: pkgDef.mayastor.ShareProtocolReplica.type.value.find(
         ent => ent.name == 'REPLICA_ISCSI'
       ).number,
     },
     ShareProtocolNexus: {
-      NBD_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
+      NEXUS_NBD: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
         ent => ent.name == 'NEXUS_NBD'
       ).number,
-      NVMF_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
+      NEXUS_NVMF: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
         ent => ent.name == 'NEXUS_NVMF'
       ).number,
-      ISCSI_FE: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
+      NEXUS_ISCSI: pkgDef.mayastor.ShareProtocolNexus.type.value.find(
         ent => ent.name == 'NEXUS_ISCSI'
       ).number,
     },

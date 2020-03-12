@@ -366,7 +366,7 @@ describe('nexus', function() {
   it('should publish the nexus using nbd', done => {
     // TODO: repeat this test for iSCSI and Nvmf
     client.PublishNexus(
-      { uuid: UUID, share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE },
+      { uuid: UUID, share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD },
       (err, res) => {
         assert(res.device_path);
         nbd_device = res.device_path;
@@ -387,7 +387,7 @@ describe('nexus', function() {
     client.PublishNexus(
       {
         uuid: UUID,
-        share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
+        share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD,
         key: '0123456789123456',
       },
       (err, res) => {
@@ -478,7 +478,7 @@ describe('nexus', function() {
       // TODO: repeat this test for iSCSI and Nvmf
       await publish({
         uuid: UUID,
-        share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
+        share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD,
       });
       await unpublish({ uuid: UUID });
       await destroyNexus({ uuid: UUID });
@@ -499,7 +499,7 @@ describe('nexus', function() {
       // TODO: repeat this test for iSCSI and Nvmf
       await publish({
         uuid: UUID,
-        share: mayastorProtoConstants.ShareProtocolNexus.NBD_FE,
+        share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD,
       });
       await destroyNexus({ uuid: UUID });
     }
