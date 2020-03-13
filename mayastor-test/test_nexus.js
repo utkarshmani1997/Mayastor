@@ -366,7 +366,10 @@ describe('nexus', function() {
   it('should publish the nexus using nbd', done => {
     // TODO: repeat this test for iSCSI and Nvmf
     client.PublishNexus(
-      { uuid: UUID, share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD },
+      {
+        uuid: UUID,
+        share: mayastorProtoConstants.ShareProtocolNexus.NEXUS_NBD,
+      },
       (err, res) => {
         assert(res.device_path);
         nbd_device = res.device_path;
