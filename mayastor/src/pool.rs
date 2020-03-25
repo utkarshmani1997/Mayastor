@@ -17,6 +17,8 @@ use rpc::jsonrpc as jsondata;
 use spdk_sys::{
     bdev_aio_delete,
     create_aio_bdev,
+    create_uring_bdev,
+    delete_uring_bdev,
     lvol_store_bdev,
     spdk_bs_free_cluster_count,
     spdk_bs_get_cluster_size,
@@ -39,20 +41,35 @@ use crate::{
     replica::ReplicaIter,
 };
 
-/// Wrapper for create aio bdev C function
+static DO_URING: bool = false;
+
+/// Wrapper for create aio or uring bdev C function
 fn create_base_bdev(file: &str, block_size: u32) -> Result<()> {
-    debug!("Creating aio bdev {} ...", file);
+    let bdev_type = if !DO_URING {
+        ("aio", "AIO")
+    } else {
+        ("uring", "Uring")
+    };
+    debug!("Creating {} bdev {} ...", bdev_type.0, file);
     let cstr_file = CString::new(file).unwrap();
-    let rc = unsafe {
-        create_aio_bdev(cstr_file.as_ptr(), cstr_file.as_ptr(), block_size)
+    let rc = if !DO_URING {
+        unsafe {
+            create_aio_bdev(cstr_file.as_ptr(), cstr_file.as_ptr(), block_size)
+        }
+    } else if unsafe {
+        create_uring_bdev(cstr_file.as_ptr(), cstr_file.as_ptr(), block_size)
+            .is_null()
+    } {
+        -1
+    } else {
+        0
     };
     if rc != 0 {
-        Err(JsonRpcError::new(
-            Code::InvalidParams,
-            "AIO bdev already exists or parameters are invalid",
-        ))
+        let err_str = bdev_type.1.to_owned()
+            + " bdev already exists or parameters are invalid";
+        Err(JsonRpcError::new(Code::InvalidParams, err_str))
     } else {
-        info!("aio bdev {} was created", file);
+        info!("{} bdev {} was created", bdev_type.0, file);
         Ok(())
     }
 }
@@ -69,11 +86,11 @@ extern "C" fn pool_done_cb(
 }
 
 /// Structure representing a pool which comprises lvol store and
-/// underlaying bdev.
+/// underlying bdev.
 ///
 /// Note about safety: The structure wraps raw C pointers from SPDK.
 /// It is safe to use only in synchronous context. If you keep Pool for
-/// longer than that then something else can run on reactor_0 inbetween
+/// longer than that then something else can run on reactor_0 in between,
 /// which may destroy the pool and invalidate the pointers!
 pub struct Pool {
     lvs_ptr: *mut spdk_lvol_store,
@@ -298,8 +315,22 @@ impl Pool {
             }
         };
         let (sender, receiver) = oneshot::channel::<i32>();
-        unsafe {
-            bdev_aio_delete(base_bdev.as_ptr(), Some(done_cb), cb_arg(sender));
+        if !DO_URING {
+            unsafe {
+                bdev_aio_delete(
+                    base_bdev.as_ptr(),
+                    Some(done_cb),
+                    cb_arg(sender),
+                );
+            }
+        } else {
+            unsafe {
+                delete_uring_bdev(
+                    base_bdev.as_ptr(),
+                    Some(done_cb),
+                    cb_arg(sender),
+                );
+            }
         }
         let bdev_errno = receiver.await.expect("Cancellation is not supported");
         if bdev_errno != 0 {
@@ -360,6 +391,7 @@ fn list_pools() -> Vec<jsondata::Pool> {
 
     for pool in PoolsIter::new() {
         pools.push(jsondata::Pool {
+            // FIXME: add bdev type?
             name: pool.get_name().to_owned(),
             disks: vec![pool.get_base_bdev().name()],
             // TODO: figure out how to detect state of pool
