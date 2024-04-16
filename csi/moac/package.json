@@ -25,7 +25,7 @@
     "js-yaml": "^3.13.1",
     "json-stream": "^1.0.0",
     "kubernetes-client": "^8.3.6",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.17",
     "sleep-promise": "^8.0.1",
     "winston": "^3.2.1",
     "yargs": "^15.3.1"
