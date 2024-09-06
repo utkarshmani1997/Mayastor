@@ -5,7 +5,7 @@
   "dependencies": {
     "@grpc/proto-loader": "^0.5.3",
     "async": "^3.2.0",
-    "chai": "^4.2.0",
+    "chai": "^4.3.10",
     "find-process": "^1.4.3",
     "grpc": "^1.24.2",
     "grpc-kit": "^0.2.0",
