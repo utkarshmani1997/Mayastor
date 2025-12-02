@@ -24,7 +24,7 @@
     "grpc-uds": "^0.1.4",
     "js-yaml": "^3.13.1",
     "json-stream": "^1.0.0",
-    "kubernetes-client": "^8.3.6",
+    "kubernetes-client": "^8.3.7",
     "lodash": "^4.17.15",
     "sleep-promise": "^8.0.1",
     "winston": "^3.2.1",
